@@ -8,6 +8,8 @@
 #include "Light.h"
 #include "Camera.h"
 #include "RayTraceRender.h"
+#include <thread>  // For std::this_thread::sleep_for
+#include <chrono>  // For std::chrono::seconds
 #define MAX_LOADSTRING 100
 
 // 全局变量:
@@ -117,8 +119,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 const std::vector<const Sphere*> sphereList = {
     new Sphere({0.0, -1, 3}, 1.0, {255, 0, 0}, 500, 0.2),
-    new Sphere({-2, 1.0, 3.0}, 1.0, {0, 0, 255}, 500, 0.5),
-    new Sphere({2.0, 1.0, 3.0}, 1, {0, 255, 0}, 10, 0.4),
+    new Sphere({2, 0.0, 4.0}, 1.0, {0, 0, 255}, 500, 0.3),
+    new Sphere({-2.0, 0.0, 4.0}, 1, {0, 255, 0}, 10, 0.4),
     new Sphere({0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5)
 };
 
@@ -128,8 +130,6 @@ const std::vector<const Light*> lightList = {
      new Light(LightTypeEnum::DirectionalLight,{0,0,0},{1,4,4},0.2),
 
 };
-Camera* camera = new Camera({ 0,0,0 }, { 0,0,0 });
-RayTraceRender* render = new RayTraceRender(sphereList, lightList, camera);
 
 
 //
@@ -165,39 +165,83 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
     case WM_PAINT:
     {
-
-        int width = 128;
-        int height = 128;
-
+        int width = 800;
+        int height = 800;
+        double viewportWidth = 1;
+        double viewportHeight = 1;
+        double viewportDistance = 1;
+        double viewportCanvasWidthRate = viewportWidth / width;
+        double viewportCanvasHeightRate = viewportHeight / height;
         int minX = -width / 2;
         int maxX = width / 2;
         int minY = height / -2;
         int maxY = height / 2;
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-
-        RECT rect;
-        rect.left = 0;
-        rect.top = 0;
-        rect.right = rect.left + width;
-        rect.bottom = rect.top + height;
-        COLORREF colorRef = RGB(Constants::BACKGROUND_COLOR[0], Constants::BACKGROUND_COLOR[1], Constants::BACKGROUND_COLOR[2]);
-        FillRect(hdc, &rect, (HBRUSH)(colorRef)); 
-        for (int x = 0; x < width; x++)
+       
+        int loopCount = 0;
+       
+        
+        while(loopCount<1)
         {
-            for (int y = 0; y < height; y++)
+            Camera* camera = new Camera({ 0,0,0 }, { 0,0,0 });
+            double  angelY = 0;
+            switch (loopCount)
             {
-                double viewPortX = x - width / 2;
-                double viewPortY = -y + height / 2;
-                double viewPortZ = 1;
-                std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewPortX,viewPortY,viewPortZ }, camera->GetPosition());
-                auto colorArray = render->GetViewPointColor(camera->GetPosition(), directionVector,1,Constants::Infinity);
-                COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
-                SetPixel(hdc, x, y, colorPixelRef);
+            case 0:
+               camera = new Camera({ 0,0,0 }, { 0,0,0 });
+				 angelY = 0;
+                break;
+            case 1:
+                camera = new Camera({ 5,0,2 }, { 0,0,0 });
+                 angelY = Constants::PI / 4;
+                break;
+            case 2:
+                 camera = new Camera({ 0,0,6 }, { 0,0,0 });
+                 angelY = Constants::PI / 2;
+                break;
+            case 3:
+                 camera = new Camera({ -1,0,1 }, { 0,0,0 });
+                 angelY = 3* Constants::PI / 4;
+                break;
+            default:
+                 camera = new Camera({ 0,0,0 }, { 0,0,0 });
+                 angelY = 0;
+                break;
             }
+           
+            RayTraceRender* render = new RayTraceRender(sphereList, lightList, camera);
+            RECT rect;
+            rect.left = 0;
+            rect.top = 0;
+            rect.right = rect.left + width;
+            rect.bottom = rect.top + height;
+            COLORREF colorRef = RGB(Constants::BACKGROUND_COLOR[0], Constants::BACKGROUND_COLOR[1], Constants::BACKGROUND_COLOR[2]);
+            FillRect(hdc, &rect, (HBRUSH)(colorRef));
+            
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    double viewportX = (x - width / 2) * viewportCanvasWidthRate;
+                    double viewportY = (-y + height / 2) * viewportCanvasHeightRate;
+
+                    std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, {0,0,0});
+					directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
+                    auto colorArray = render->GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
+                    COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
+                    SetPixel(hdc, x, y, colorPixelRef);
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            loopCount++;
+            delete camera;
+            delete render;
         }
 
         EndPaint(hWnd, &ps);
+
     }
     break;
     case WM_DESTROY:

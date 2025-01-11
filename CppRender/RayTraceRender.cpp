@@ -26,7 +26,7 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
             if (currentLight->getLightType() == LightTypeEnum::PointLight)
             {
                 lightDirectionFromSurface = VectorHelper::VectorSub(currentLight->getPosition(), surfacePoint);
-                tMax = 1; 
+                tMax = 100; 
             }
             else 
             {
@@ -35,12 +35,12 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
             }
 
             {
-                auto [minTTemp, closestSphereTemp] = GetClosestIntersection(surfacePoint, lightDirectionFromSurface, Constants::Infinitesimal, tMax);
+                    auto [minTTemp, closestSphereTemp] = GetClosestIntersection(surfacePoint, lightDirectionFromSurface, Constants::Infinitesimal, tMax);
                 minT = minTTemp; 
                 closestSphere = closestSphereTemp; 
             }
 
-            if (closestSphere != nullptr)
+            if (closestSphere == nullptr)
             {
                 lightIntensityScale += currentLight->getIntensity() * DiffuseReflectionScale(lightDirectionFromSurface, normalVector);
                 lightIntensityScale += currentLight->getIntensity() * SpecularReflectionScale(lightDirectionFromSurface, surfaceToCameraVector, normalVector, specular);
@@ -62,7 +62,7 @@ double RayTraceRender::DiffuseReflectionScale(const std::array<double, 3>& origi
 double RayTraceRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular)
 {
 	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
-	return  std::max(0.0, VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)));
+	return  std::max(0.0, std::pow(VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)),specular));
 }
 
 RayTraceRender::RayTraceRender(const std::vector<const Sphere*>& sphereList, const std::vector<const Light*>& lightList, const Camera* camera)
@@ -71,7 +71,8 @@ RayTraceRender::RayTraceRender(const std::vector<const Sphere*>& sphereList, con
 
 }
 
-std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax)
+
+std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax,const int& depth)
 {
 	auto [minT, closestSphere] = GetClosestIntersection(oPoint, directionVector, tMin, tMax);
 
@@ -82,9 +83,20 @@ std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>
 	
 	const std::array<double, 3> surfacePoint = VectorHelper::VectorAdd(oPoint, VectorHelper::VectorScale(directionVector, minT));
 	const std::array<double, 3> normalVector = VectorHelper::VectorNormalize(VectorHelper::VectorSub(surfacePoint, closestSphere->GetCenterPoint())) ;
-    double intensityScale = 1;
-    //double intensityScale = GetLighteningScale(surfacePoint, normalVector,closestSphere->GetSpecular());
-	return VectorHelper::VectorScale(closestSphere->GetColor(), intensityScale);
+    double intensityScale = GetLighteningScale(surfacePoint, normalVector,closestSphere->GetSpecular());
+    const std::array<int, 3> localColor = VectorHelper::ColorVectorScale(closestSphere->GetColor(), intensityScale);
+    if (depth==Constants::Max_Depth)
+    {
+        return localColor;
+    }
+    else
+    {
+        const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(VectorHelper::VectorScale(directionVector, -1), normalVector);
+        const std::array<int, 3> reflectedColor = GetViewPointColor(surfacePoint, reflectRay, Constants::Infinitesimal, Constants::Infinity, depth + 1);
+        const std::array<int, 3> finalColor = VectorHelper::ColorVectorScale(localColor, 1 - closestSphere->GetReflective());
+        const std::array<int, 3> reflectedColorScaled = VectorHelper::ColorVectorScale(reflectedColor, closestSphere->GetReflective());
+        return VectorHelper::ColorVectorAdd(finalColor, reflectedColorScaled);
+    }
 }
 
 std::tuple<double, const Sphere*> RayTraceRender::GetClosestIntersection(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax)

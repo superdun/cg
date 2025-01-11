@@ -19,6 +19,6 @@ private:
 public:
 	RayTraceRender(const std::vector<const Sphere*>& sphereList, const std::vector<const Light*>& lightList,const Camera* camera);
 	
-	std::array<int, 3> GetViewPointColor(const std::array<double,3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax);
+	std::array<int, 3> GetViewPointColor(const std::array<double,3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax, const int& depth);
 };
 

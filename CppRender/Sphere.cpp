@@ -42,10 +42,9 @@ double Sphere::GetReflective() const
 
 double Sphere::GetIntersectT(const std::array<double, 3>& pointOrigin, const std::array<double, 3>& directionVector) const
 {
-	const std::array<double, 3> rayVector =VectorHelper::VectorAdd(pointOrigin, directionVector);
 	const std::array<double, 3> coVector =VectorHelper::VectorSub(pointOrigin, centerPoint );
-	const double a =VectorHelper::VectorDot(rayVector, rayVector);
-	const double b = 2 *VectorHelper::VectorDot(rayVector, coVector);
+	const double a =VectorHelper::VectorDot(directionVector, directionVector);
+	const double b = 2 *VectorHelper::VectorDot(directionVector, coVector);
 	const double c =VectorHelper::VectorDot(coVector, coVector) - radius * radius;
 	const double discriminant = b * b - 4 * a * c;
 	if (discriminant<0)
