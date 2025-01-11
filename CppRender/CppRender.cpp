@@ -121,7 +121,7 @@ const std::vector<const Sphere*> sphereList = {
     new Sphere({0.0, -1, 3}, 1.0, {255, 0, 0}, 500, 0.2),
     new Sphere({2, 0.0, 4.0}, 1.0, {0, 0, 255}, 500, 0.3),
     new Sphere({-2.0, 0.0, 4.0}, 1, {0, 255, 0}, 10, 0.4),
-    new Sphere({0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5)
+    new Sphere({0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.1)
 };
 
 const std::vector<const Light*> lightList = {
@@ -186,7 +186,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             Camera* camera = new Camera({ 0,0,0 }, { 0,0,0 });
             double  angelY = 0;
-            switch (loopCount)
+ /*           switch (loopCount)
             {
             case 0:
                camera = new Camera({ 0,0,0 }, { 0,0,0 });
@@ -208,7 +208,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                  camera = new Camera({ 0,0,0 }, { 0,0,0 });
                  angelY = 0;
                 break;
-            }
+            }*/
            
             RayTraceRender* render = new RayTraceRender(sphereList, lightList, camera);
             RECT rect;
@@ -227,7 +227,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     double viewportY = (-y + height / 2) * viewportCanvasHeightRate;
 
                     std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, {0,0,0});
-					directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
+					//directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
                     auto colorArray = render->GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
                     COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
                     SetPixel(hdc, x, y, colorPixelRef);
