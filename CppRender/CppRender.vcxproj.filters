@@ -42,6 +42,12 @@
     <ClInclude Include="Light.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="RayTraceRender.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Canvas.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CppRender.cpp">
@@ -64,6 +70,12 @@
     </ClCompile>
     <ClCompile Include="LightTypeEnum.h">
       <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="RayTraceRender.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Canvas.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

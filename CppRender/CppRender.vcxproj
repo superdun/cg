@@ -129,10 +129,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Canvas.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="CppRender.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="RayTraceRender.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="targetver.h" />
@@ -140,10 +142,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="Constants.cpp" />
     <ClCompile Include="CppRender.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightTypeEnum.h" />
+    <ClCompile Include="RayTraceRender.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="VectorHelper.cpp" />
   </ItemGroup>
