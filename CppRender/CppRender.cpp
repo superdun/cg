@@ -165,51 +165,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
     case WM_PAINT:
     {
-        int width = 800;
-        int height = 800;
-        double viewportWidth = 1;
-        double viewportHeight = 1;
-        double viewportDistance = 1;
-        double viewportCanvasWidthRate = viewportWidth / width;
-        double viewportCanvasHeightRate = viewportHeight / height;
-        int minX = -width / 2;
-        int maxX = width / 2;
-        int minY = height / -2;
-        int maxY = height / 2;
+        constexpr int width = 800;
+        constexpr int height = 800;
         PAINTSTRUCT ps;
+        static HBITMAP  hBitmap;
         HDC hdc = BeginPaint(hWnd, &ps);
-       
-        int loopCount = 0;
-       
-        
-        while(loopCount<1)
-        {
+        if (hBitmap == NULL) {
+            HDC hMemDC = CreateCompatibleDC(hdc);
+            hBitmap = CreateBitmap(width, height, 1, 32, NULL);
+            SelectObject(hMemDC, hBitmap);
+
+            constexpr double viewportWidth = 1;
+            constexpr double viewportHeight = 1;
+            constexpr double viewportDistance = 1;
+            constexpr double viewportCanvasWidthRate = viewportWidth / width;
+            constexpr double viewportCanvasHeightRate = viewportHeight / height;
+            constexpr int minX = -width / 2;
+            constexpr int maxX = width / 2;
+            constexpr int minY = height / -2;
+            constexpr int maxY = height / 2;
+
+
+
+            int loopCount = 0;
+
+
             Camera* camera = new Camera({ 0,0,0 }, { 0,0,0 });
-            double  angelY = 0;
- /*           switch (loopCount)
-            {
-            case 0:
-               camera = new Camera({ 0,0,0 }, { 0,0,0 });
-				 angelY = 0;
-                break;
-            case 1:
-                camera = new Camera({ 5,0,2 }, { 0,0,0 });
-                 angelY = Constants::PI / 4;
-                break;
-            case 2:
-                 camera = new Camera({ 0,0,6 }, { 0,0,0 });
-                 angelY = Constants::PI / 2;
-                break;
-            case 3:
-                 camera = new Camera({ -1,0,1 }, { 0,0,0 });
-                 angelY = 3* Constants::PI / 4;
-                break;
-            default:
-                 camera = new Camera({ 0,0,0 }, { 0,0,0 });
-                 angelY = 0;
-                break;
-            }*/
-           
+
             RayTraceRender* render = new RayTraceRender(sphereList, lightList, camera);
             RECT rect;
             rect.left = 0;
@@ -217,8 +199,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             rect.right = rect.left + width;
             rect.bottom = rect.top + height;
             COLORREF colorRef = RGB(Constants::BACKGROUND_COLOR[0], Constants::BACKGROUND_COLOR[1], Constants::BACKGROUND_COLOR[2]);
-            FillRect(hdc, &rect, (HBRUSH)(colorRef));
-            
+            FillRect(hMemDC, &rect, (HBRUSH)(colorRef));
+
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
@@ -226,22 +208,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     double viewportX = (x - width / 2) * viewportCanvasWidthRate;
                     double viewportY = (-y + height / 2) * viewportCanvasHeightRate;
 
-                    std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, {0,0,0});
-					//directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
+                    std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, { 0,0,0 });
+                    //directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
                     auto colorArray = render->GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
                     COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
-                    SetPixel(hdc, x, y, colorPixelRef);
+                    SetPixel(hMemDC, x, y, colorPixelRef);
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            loopCount++;
             delete camera;
             delete render;
+            DeleteDC(hMemDC);
         }
 
+        HDC hdcMem = CreateCompatibleDC(hdc);
+        SelectObject(hdcMem, hBitmap);
+        BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
+        DeleteDC(hdcMem);
         EndPaint(hWnd, &ps);
-
+            
     }
     break;
     case WM_DESTROY:
