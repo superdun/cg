@@ -10,12 +10,40 @@
 #include "RayTraceRender.h"
 #include <thread>  // For std::this_thread::sleep_for
 #include <chrono>  // For std::chrono::seconds
+#include "Canvas.h"
+#include <iostream>
 #define MAX_LOADSTRING 100
-
+#define TIMER_ID 1
+#define TIMER_INTERVAL 160 
 // 全局变量:
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
+
+constexpr int width = 400;
+constexpr int height = 400;
+Camera* camera;
+RayTraceRender* render;
+Canvas* canvas;
+HBITMAP hBitmap;
+
+const std::vector<const Sphere*> sphereList = {
+    new Sphere({0.0, -1, 3}, 1.0, {255, 0, 0}, 500, 0.2),
+    new Sphere({2, 0.0, 4.0}, 1.0, {0, 0, 255}, 500, 0.3),
+    new Sphere({-2.0, 0.0, 4.0}, 1, {0, 255, 0}, 10, 0.4),
+    new Sphere({0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.1)
+};
+
+const std::vector<const Light*> lightList = {
+     new Light(LightTypeEnum::AmbientLight,{0,0,0},{0,0,0},0.2),
+     new Light(LightTypeEnum::PointLight,{2,1,0},{0,0,0},0.6),
+     new Light(LightTypeEnum::DirectionalLight,{0,0,0},{1,4,4},0.2),
+
+};
+
+int frameCount = 0;
+float fps = 0.0f;
+std::chrono::steady_clock::time_point lastTime = std::chrono::steady_clock::now();
 
 // 此代码模块中包含的函数的前向声明:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -104,32 +132,29 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     hInst = hInstance; // 将实例句柄存储在全局变量中
 
     HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, 0, width, height+60, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {
         return FALSE;
     }
+    // Initialize global objects
+    camera = new Camera({ 0,0,0 }, { 0,0,0 });
+    render = new RayTraceRender(sphereList, lightList, camera);
+    canvas = new Canvas(render, nullptr, width, height, camera);
+    hBitmap = CreateBitmap(width, height, 1, 32, NULL);
 
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
+
+
+    // Set a timer for animation
+    SetTimer(hWnd, TIMER_ID, TIMER_INTERVAL, NULL);
+
     return TRUE;
 }
 
-const std::vector<const Sphere*> sphereList = {
-    new Sphere({0.0, -1, 3}, 1.0, {255, 0, 0}, 500, 0.2),
-    new Sphere({2, 0.0, 4.0}, 1.0, {0, 0, 255}, 500, 0.3),
-    new Sphere({-2.0, 0.0, 4.0}, 1, {0, 255, 0}, 10, 0.4),
-    new Sphere({0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.1)
-};
-
-const std::vector<const Light*> lightList = {
-     new Light(LightTypeEnum::AmbientLight,{0,0,0},{0,0,0},0.2),
-     new Light(LightTypeEnum::PointLight,{2,1,0},{0,0,0},0.6),
-     new Light(LightTypeEnum::DirectionalLight,{0,0,0},{1,4,4},0.2),
-
-};
 
 
 //
@@ -163,61 +188,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
     }
     break;
+    case WM_TIMER:
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
+    break;
     case WM_PAINT:
     {
-        constexpr int width = 800;
-        constexpr int height = 800;
+        auto frameStart = std::chrono::high_resolution_clock::now();
         PAINTSTRUCT ps;
-        static HBITMAP  hBitmap;
         HDC hdc = BeginPaint(hWnd, &ps);
+        hBitmap = NULL;
         if (hBitmap == NULL) {
+            hBitmap = CreateBitmap(width, height, 1, 32, NULL);
             HDC hMemDC = CreateCompatibleDC(hdc);
             hBitmap = CreateBitmap(width, height, 1, 32, NULL);
             SelectObject(hMemDC, hBitmap);
-
-            constexpr double viewportWidth = 1;
-            constexpr double viewportHeight = 1;
-            constexpr double viewportDistance = 1;
-            constexpr double viewportCanvasWidthRate = viewportWidth / width;
-            constexpr double viewportCanvasHeightRate = viewportHeight / height;
-            constexpr int minX = -width / 2;
-            constexpr int maxX = width / 2;
-            constexpr int minY = height / -2;
-            constexpr int maxY = height / 2;
+              
+            Canvas* canvas = new Canvas(render, hMemDC, width, height, camera);
+            //canvas->RunRender();
+  
+            camera->Forward();
+            canvas->RunRender();
 
 
-
-            int loopCount = 0;
-
-
-            Camera* camera = new Camera({ 0,0,0 }, { 0,0,0 });
-
-            RayTraceRender* render = new RayTraceRender(sphereList, lightList, camera);
-            RECT rect;
-            rect.left = 0;
-            rect.top = 0;
-            rect.right = rect.left + width;
-            rect.bottom = rect.top + height;
-            COLORREF colorRef = RGB(Constants::BACKGROUND_COLOR[0], Constants::BACKGROUND_COLOR[1], Constants::BACKGROUND_COLOR[2]);
-            FillRect(hMemDC, &rect, (HBRUSH)(colorRef));
-
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    double viewportX = (x - width / 2) * viewportCanvasWidthRate;
-                    double viewportY = (-y + height / 2) * viewportCanvasHeightRate;
-
-                    std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, { 0,0,0 });
-                    //directionVector = VectorHelper::VecRotate(directionVector,0, angelY,0);
-                    auto colorArray = render->GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
-                    COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
-                    SetPixel(hMemDC, x, y, colorPixelRef);
-                }
-            }
-
-            delete camera;
-            delete render;
+            //delete camera;
+            //delete render;
+            //delete canvas;
             DeleteDC(hMemDC);
         }
 
@@ -226,7 +223,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
         DeleteDC(hdcMem);
         EndPaint(hWnd, &ps);
-            
+        auto frameEnd = std::chrono::high_resolution_clock::now();
+
+        //// 计算每帧时间
+        //auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+
+        //// 在控制台输出每帧时间
+        //std::ostringstream oss;
+        //oss << "Frame Time: " << frameDuration.count() << " ms\n";
+
+        //// 将字符串转换为 std::string 并使用 OutputDebugString
+        //OutputDebugStringA(oss.str().c_str());
     }
     break;
     case WM_DESTROY:

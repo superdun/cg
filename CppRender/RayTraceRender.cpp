@@ -2,7 +2,7 @@
 #include <algorithm> 
 #include <tuple>
 
-double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular)
+double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
 {
     const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub(camera->GetPosition(), surfacePoint);
     double lightIntensityScale = 0;
@@ -35,7 +35,7 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
             }
 
             {
-                    auto [minTTemp, closestSphereTemp] = GetClosestIntersection(surfacePoint, lightDirectionFromSurface, Constants::Infinitesimal, tMax);
+                auto [minTTemp, closestSphereTemp] = GetClosestIntersection(surfacePoint, lightDirectionFromSurface, Constants::Infinitesimal, tMax);
                 minT = minTTemp; 
                 closestSphere = closestSphereTemp; 
             }
@@ -53,13 +53,13 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
     }
     return lightIntensityScale;
 }
-double RayTraceRender::DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector)
+double RayTraceRender::DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector) const
 {
 
 	return  std::max(0.0, VectorHelper::VectorDot(normalVector, originRay) / VectorHelper::VectorLength(originRay)) ;
 
 }
-double RayTraceRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular)
+double RayTraceRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const
 {
 	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
 	return  std::max(0.0, std::pow(VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)),specular));
@@ -72,7 +72,7 @@ RayTraceRender::RayTraceRender(const std::vector<const Sphere*>& sphereList, con
 }
 
 
-std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax,const int& depth)
+std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax, const int& depth) const
 {
 	auto [minT, closestSphere] = GetClosestIntersection(oPoint, directionVector, tMin, tMax);
 
@@ -83,7 +83,7 @@ std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>
 	
 	const std::array<double, 3> surfacePoint = VectorHelper::VectorAdd(oPoint, VectorHelper::VectorScale(directionVector, minT));
 	const std::array<double, 3> normalVector = VectorHelper::VectorNormalize(VectorHelper::VectorSub(surfacePoint, closestSphere->GetCenterPoint())) ;
-    double intensityScale = GetLighteningScale(surfacePoint, normalVector,closestSphere->GetSpecular());
+    double intensityScale = GetLighteningScale(surfacePoint, normalVector,closestSphere->GetSpecular()) ;
     const std::array<int, 3> localColor = VectorHelper::ColorVectorScale(closestSphere->GetColor(), intensityScale);
     if (depth==Constants::Max_Depth)
     {
@@ -99,7 +99,7 @@ std::array<int, 3> RayTraceRender::GetViewPointColor(const std::array<double, 3>
     }
 }
 
-std::tuple<double, const Sphere*> RayTraceRender::GetClosestIntersection(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax)
+std::tuple<double, const Sphere*> RayTraceRender::GetClosestIntersection(const std::array<double, 3>& oPoint, const std::array<double, 3>& directionVector, const double& tMin, const double& tMax) const
 {
 	double minT = Constants::Infinity;
 	const Sphere* closestSpere = nullptr;
