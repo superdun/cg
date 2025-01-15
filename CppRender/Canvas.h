@@ -9,6 +9,7 @@
 #include "Light.h"
 #include <wtypes.h>
 #include "RayTraceRender.h"
+#include "RasterizationRender.h"
 class Canvas
 {
 private:
@@ -25,19 +26,22 @@ private:
 	const double viewportCanvasWidthRate;
 	const double viewportCanvasHeightRate;
 	const HDC& hMemDC;
-	const RayTraceRender* render;
+	const RayTraceRender* renderRayTrace;
+	const RasterizationRender* renderRasterizationTrace;
 	const Camera* camera;
 	void resetCanvas() const;
-	void RenderSection(int startY, int endY, std::vector<std::vector<COLORREF>>& buffer) const;
+	void RenderSectionByRayTrace(int startY, int endY, std::vector<std::vector<COLORREF>>& buffer) const;
 	void MergeBuffer(std::vector<std::vector<COLORREF>>& buffer) const;
+	 
 public:
-	Canvas(const RayTraceRender* render,const HDC& hMemDC, const int canvasWidth,
+	Canvas(const RayTraceRender* renderRayTrace, const RasterizationRender* renderRasterizationTrace,const HDC& hMemDC, const int canvasWidth,
 		const int canvasHeight,const Camera* camera,
 		const double viewportWidth = 1,
 		const double viewportHeight = 1,
 		const double viewportDistance = 1);
 	~Canvas();
-	void RunRender()  const;
+	void RunRenderByRayTrace()  const;
+	void RunRenderByRasterization() const;
 	//void PutPixel();
 };
 

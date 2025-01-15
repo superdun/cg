@@ -22,9 +22,10 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
 
 constexpr int width = 400;
 constexpr int height = 400;
-Camera* camera;
-RayTraceRender* render;
-Canvas* canvas;
+Camera* camera = nullptr;
+RayTraceRender* rayTraceRender = nullptr;
+RasterizationRender* rasterizationRender = nullptr;
+
 HBITMAP hBitmap;
 
 const std::vector<const Sphere*> sphereList = {
@@ -140,8 +141,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     // Initialize global objects
     camera = new Camera({ 0,0,0 }, { 0,0,0 });
-    render = new RayTraceRender(sphereList, lightList, camera);
-    canvas = new Canvas(render, nullptr, width, height, camera);
+    rayTraceRender = new RayTraceRender(sphereList, lightList, camera);
+    rasterizationRender = new RasterizationRender();
     hBitmap = CreateBitmap(width, height, 1, 32, NULL);
 
     ShowWindow(hWnd, nCmdShow);
@@ -195,45 +196,48 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
     case WM_PAINT:
     {
-        auto frameStart = std::chrono::high_resolution_clock::now();
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-        hBitmap = NULL;
-        if (hBitmap == NULL) {
-            hBitmap = CreateBitmap(width, height, 1, 32, NULL);
-            HDC hMemDC = CreateCompatibleDC(hdc);
-            hBitmap = CreateBitmap(width, height, 1, 32, NULL);
-            SelectObject(hMemDC, hBitmap);
-              
-            Canvas* canvas = new Canvas(render, hMemDC, width, height, camera);
-            //canvas->RunRender();
-  
-            camera->Forward();
-            canvas->RunRender();
+        if (camera!=nullptr &&  rayTraceRender != nullptr&& rasterizationRender!= nullptr)
+        {
+            auto frameStart = std::chrono::high_resolution_clock::now();
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hWnd, &ps);
+            hBitmap = NULL;
+            if (hBitmap == NULL) {
+                hBitmap = CreateBitmap(width, height, 1, 32, NULL);
+                HDC hMemDC = CreateCompatibleDC(hdc);
+                hBitmap = CreateBitmap(width, height, 1, 32, NULL);
+                SelectObject(hMemDC, hBitmap);
 
+                Canvas* canvas = new Canvas(rayTraceRender,rasterizationRender, hMemDC, width, height, camera);
 
-            //delete camera;
-            //delete render;
-            //delete canvas;
-            DeleteDC(hMemDC);
+                //camera->Forward();
+                //canvas->RunRenderByRayTrace();
+                canvas->RunRenderByRasterization();
+
+                //delete camera;
+                //delete render;
+                //delete canvas;
+                DeleteDC(hMemDC);
+            }
+
+            HDC hdcMem = CreateCompatibleDC(hdc);
+            SelectObject(hdcMem, hBitmap);
+            BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
+            DeleteDC(hdcMem);
+            EndPaint(hWnd, &ps);
+            auto frameEnd = std::chrono::high_resolution_clock::now();
+
+            //// 计算每帧时间
+            //auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+
+            //// 在控制台输出每帧时间
+            //std::ostringstream oss;
+            //oss << "Frame Time: " << frameDuration.count() << " ms\n";
+
+            //// 将字符串转换为 std::string 并使用 OutputDebugString
+            //OutputDebugStringA(oss.str().c_str());
         }
-
-        HDC hdcMem = CreateCompatibleDC(hdc);
-        SelectObject(hdcMem, hBitmap);
-        BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
-        DeleteDC(hdcMem);
-        EndPaint(hWnd, &ps);
-        auto frameEnd = std::chrono::high_resolution_clock::now();
-
-        //// 计算每帧时间
-        //auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
-
-        //// 在控制台输出每帧时间
-        //std::ostringstream oss;
-        //oss << "Frame Time: " << frameDuration.count() << " ms\n";
-
-        //// 将字符串转换为 std::string 并使用 OutputDebugString
-        //OutputDebugStringA(oss.str().c_str());
+       
     }
     break;
     case WM_DESTROY:

@@ -48,6 +48,12 @@
     <ClInclude Include="Canvas.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="RasterizationRender.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Pixel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CppRender.cpp">
@@ -75,6 +81,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Canvas.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="RasterizationRender.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Pixel.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -136,6 +136,8 @@
     <ClInclude Include="CppRender.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="Pixel.h" />
+    <ClInclude Include="RasterizationRender.h" />
     <ClInclude Include="RayTraceRender.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Sphere.h" />
@@ -149,6 +151,8 @@
     <ClCompile Include="CppRender.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightTypeEnum.h" />
+    <ClCompile Include="Pixel.cpp" />
+    <ClCompile Include="RasterizationRender.cpp" />
     <ClCompile Include="RayTraceRender.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="VectorHelper.cpp" />
