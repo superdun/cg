@@ -89,31 +89,18 @@ void Canvas::RunRenderByRayTrace() const
 void Canvas::RunRenderByRasterization() const
 {
 	resetCanvas();
-	std::array<int, 2> p0 = { 100,100 };
-	std::array<int, 2> p1 = { 200,300 };
-    std::array<int, 2> pp0 = { 300,500 };
-    std::array<int, 2> pp1 = { 200,100 };
-	std::array<int, 3> color = { 255,0,0 };
-    std::vector<Pixel*> pixels1 = renderRasterizationTrace->DrawLine(p0, p1, color);
-    std::vector<Pixel*> pixels2 = renderRasterizationTrace->DrawLine(pp0, pp1, color);
-	for (auto pixel : pixels1)
+	std::array<int, 2> p1 = { 100,100 };
+	std::array<int, 2> p2 = { 200,300 };
+    std::array<int, 2> p0 = { 300,300 };
+    std::array<int, 3> color = { 255,0,0 };
+
+    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawWireFrameTriangle(p0, p1,p2, color);
+	for (auto pixel : pixels)
 	{
 		const auto& position = pixel->GetPosition();
 		const auto& color = pixel->GetColor();
 		SetPixel(hMemDC, position[0], position[1], RGB(color[0], color[1], color[2]));
+        delete pixel;
 	}
-    for (auto pixel : pixels2)
-    {
-        const auto& position = pixel->GetPosition();
-        const auto& color = pixel->GetColor();
-        SetPixel(hMemDC, position[0], position[1], RGB(color[0], color[1], color[2]));
-    }
-    for (auto pixel : pixels1)
-    {
-        delete pixel; // Ensure to free each pixel if dynamically allocated
-    }
-    for (auto pixel : pixels2)
-    {
-        delete pixel; // Ensure to free each pixel if dynamically allocated
-    }
+
 }
