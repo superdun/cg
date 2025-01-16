@@ -227,15 +227,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
             auto frameEnd = std::chrono::high_resolution_clock::now();
 
-            //// 计算每帧时间
-            //auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+            // 计算每帧时间
+            auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
 
-            //// 在控制台输出每帧时间
-            //std::ostringstream oss;
-            //oss << "Frame Time: " << frameDuration.count() << " ms\n";
+            // 在控制台输出每帧时间
+            std::ostringstream oss;
+            oss << "Frame Time: " << frameDuration.count() << " ms\n";
 
-            //// 将字符串转换为 std::string 并使用 OutputDebugString
-            //OutputDebugStringA(oss.str().c_str());
+            // 将字符串转换为 std::string 并使用 OutputDebugString
+            OutputDebugStringA(oss.str().c_str());
         }
        
     }

@@ -94,24 +94,24 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	{
 		std::swap(p1_new, p2_new);
 	}
-	auto xListLow = Interpolate(p0[1], p0[0], p2[1], p2[0]);
-	auto xListHigher = Interpolate(p1[1], p1[0], p2[1], p2[0]);
-	auto xListHighest = Interpolate(p0[1], p0[0], p1[1], p1[0]);
+	auto xListLow = Interpolate(p0_new[1], p0_new[0], p2_new[1], p2_new[0]);
+	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
+	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 	
 	
-	for (int y = p0[1]; y <= p2[1]; y++)
+	for (int y = p0_new[1]; y <= p2_new[1]; y++)
 	{
-		auto xLow = xListLow[y - p0[1]];
+		auto xLow = xListLow[y - p0_new[1]];
 		std::array<int, 2> pOnEdge1 = { xLow,y };
 		std::array<int, 2> pOnEdge2;
-		if (y<p1[1])
+		if (y< p1_new[1])
 		{	
 			
-			pOnEdge2 = { (int)xListHighest[y-p0[1]],y};
+			pOnEdge2 = { (int)xListHighest[y- p0_new[1]],y};
 
 		}
 		else {
-			pOnEdge2 = { (int)xListHigher[y - p1[1]],y };
+			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
 		}
 		if (pOnEdge1[0]> pOnEdge2[0])
 		{
@@ -125,7 +125,7 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	}
 
 
-	return std::vector<Pixel*>();
+	return result;
 }
 
 

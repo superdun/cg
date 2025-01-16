@@ -89,12 +89,12 @@ void Canvas::RunRenderByRayTrace() const
 void Canvas::RunRenderByRasterization() const
 {
 	resetCanvas();
-	std::array<int, 2> p1 = { 100,100 };
+	std::array<int, 2> p1 = { 50,100 };
 	std::array<int, 2> p2 = { 200,300 };
-    std::array<int, 2> p0 = { 300,300 };
+    std::array<int, 2> p0 = { 350,360 };
     std::array<int, 3> color = { 255,0,0 };
 
-    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawWireFrameTriangle(p0, p1,p2, color);
+    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawFilledTriangle(p0, p1,p2, color);
 	for (auto pixel : pixels)
 	{
 		const auto& position = pixel->GetPosition();
