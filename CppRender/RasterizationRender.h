@@ -11,6 +11,7 @@ public:
 	std::vector<Pixel*> DrawLine(const std::array<int,2> p0,const std::array<int,2> p1,const std::array<int,3> color) const;
 	std::vector<Pixel*> DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3> color) const;
 	std::vector<Pixel*> DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3> color) const;
+	std::vector<Pixel*> DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double h1, const double h2,const double h3, const std::array<int, 3> color) const;
 
 };
 

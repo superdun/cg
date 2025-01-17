@@ -20,8 +20,8 @@ HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
 
-constexpr int width = 400;
-constexpr int height = 400;
+constexpr int width = 600;
+constexpr int height = 600;
 Camera* camera = nullptr;
 RayTraceRender* rayTraceRender = nullptr;
 RasterizationRender* rasterizationRender = nullptr;

@@ -89,17 +89,21 @@ void Canvas::RunRenderByRayTrace() const
 void Canvas::RunRenderByRasterization() const
 {
 	resetCanvas();
-	std::array<int, 2> p1 = { 50,100 };
-	std::array<int, 2> p2 = { 200,300 };
-    std::array<int, 2> p0 = { 350,360 };
-    std::array<int, 3> color = { 255,0,0 };
+    std::array<int, 2> p0 = { -200,-250 };
+	std::array<int, 2> p1 = { 200,50 };
+	std::array<int, 2> p2 = { 20,250 };
+    double h0 = 1;
+    double h1 = 0.5;
+    double h2 = 0;
 
-    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawFilledTriangle(p0, p1,p2, color);
+    std::array<int, 3> color = { 0,255,0 };
+
+    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawShadedTriangle(p0, p1,p2,h0,h1,h2, color);
 	for (auto pixel : pixels)
 	{
 		const auto& position = pixel->GetPosition();
 		const auto& color = pixel->GetColor();
-		SetPixel(hMemDC, position[0], position[1], RGB(color[0], color[1], color[2]));
+		SetPixel(hMemDC, position[0]+canvasMaxX, -position[1]+canvasMaxY, RGB(color[0], color[1], color[2]));
         delete pixel;
 	}
 
