@@ -24,11 +24,16 @@ double Camera::GetAngleY() const
 	return angelY;
 }
 
-void Camera::Forward() 
+void Camera::Move() 
 {
 	angelY += 0.01;
 	position[1] = position[1] + 0.01;
 	position[2] = position[2]+0.01;
+}
+
+void Camera::Forward()
+{
+	position[2] = position[2] + 0.01;
 }
 
 void Camera::TurnAround() 

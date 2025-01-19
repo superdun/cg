@@ -1,0 +1,32 @@
+#include "Triangle.h"
+
+Triangle::Triangle(const std::array<double, 3>* v0Pointer, const std::array<double, 3>* v1Pointer, const std::array<double, 3>* v2Pointer, const std::array<int, 3> color)
+    : v0Pointer(v0Pointer), v1Pointer(v1Pointer), v2Pointer(v2Pointer), color(color)
+{
+}
+
+Triangle::~Triangle()
+{
+}
+
+const std::array<double, 3>* Triangle::getV0Pointer() const
+{
+    return v0Pointer;
+}
+
+const std::array<double, 3>* Triangle::getV1Pointer() const
+{
+    return v1Pointer;
+}
+
+const std::array<double, 3>* Triangle::getV2Pointer() const
+{
+    return v2Pointer;
+}
+
+const std::array<int, 3>& Triangle::getColor() const
+{
+    return color;
+}
+
+

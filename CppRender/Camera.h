@@ -12,6 +12,7 @@ public:
 	std::array<double, 3> GetPosition() const;
 	std::array<double, 3> GetDirection() const;
 	double GetAngleY() const;
+	void Move();
 	void Forward() ;
 	void TurnAround();
 };

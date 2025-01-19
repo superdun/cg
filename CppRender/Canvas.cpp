@@ -14,46 +14,24 @@ void Canvas::resetCanvas() const
     COLORREF colorRef = RGB(Constants::BACKGROUND_COLOR[0], Constants::BACKGROUND_COLOR[1], Constants::BACKGROUND_COLOR[2]);
     HBRUSH brush = CreateSolidBrush(colorRef); // Create a brush with the specified color
     FillRect(hMemDC, &rect, brush);
-    DeleteObject(brush); 
+    DeleteObject(brush);
 }
 
-void Canvas::RenderSectionByRayTrace(int startY, int endY,std::vector<std::vector<COLORREF>>& buffer) const
+
+void Canvas::PutPixel(const int x,const int y ,const COLORREF& color) const
 {
-    for (int x = 0; x < canvasWidth; x++)
-    {
-        for (int y = startY; y < endY; y++)
-        {
-            double viewportX = (x - canvasMaxX) * viewportCanvasWidthRate;
-            double viewportY = (-y + canvasMaxY) * viewportCanvasHeightRate;
-
-            std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,viewportDistance }, { 0,0,0 });
-            directionVector = VectorHelper::VecRotate(directionVector,0, camera->GetAngleY(), 0);
-            auto colorArray = renderRayTrace->GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
-            COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
-            buffer[y][x] = colorPixelRef;
-        }
-    }
-}
-
-void Canvas::MergeBuffer(std::vector<std::vector<COLORREF>>& buffer) const
-{
-    for (int y = 0; y < canvasHeight; y++)
-    {
-        for (int x = 0; x < canvasWidth; x++)
-        {
-            SetPixel(hMemDC, x, y, buffer[y][x]);
-        }
-    }
+    SetPixel(hMemDC, x, y, color);
 }
 
 
 
-Canvas::Canvas(const RayTraceRender* renderRayTrace, const RasterizationRender* renderRasterizationTrace,const HDC& hMemDC, const int canvasWidth, const int canvasHeight, const Camera* camera, const double viewportWidth, const double viewportHeight, const double viewportDistance)
-    :renderRayTrace(renderRayTrace), renderRasterizationTrace(renderRasterizationTrace), hMemDC(hMemDC), canvasWidth(canvasWidth), canvasHeight(canvasHeight), camera(camera),
+
+Canvas::Canvas(const HDC& hMemDC, const int canvasWidth, const int canvasHeight, const Camera* camera, const double viewportWidth, const double viewportHeight, const double viewportDistance)
+    : hMemDC(hMemDC), canvasWidth(canvasWidth), canvasHeight(canvasHeight), camera(camera),
     canvasMinX(canvasWidth / -2), canvasMaxX(canvasWidth / 2),
-    canvasMinY(canvasHeight / -2), canvasMaxY(canvasHeight / 2),viewportWidth(viewportWidth),viewportHeight(viewportHeight),
-	viewportDistance(viewportDistance), viewportCanvasWidthRate(viewportWidth / canvasWidth), viewportCanvasHeightRate(viewportHeight/canvasHeight)
-
+    canvasMinY(canvasHeight / -2), canvasMaxY(canvasHeight / 2), viewportWidth(viewportWidth), viewportHeight(viewportHeight),
+    viewportDistance(viewportDistance), viewportCanvasWidthRate(viewportWidth / canvasWidth), viewportCanvasHeightRate(viewportHeight / canvasHeight),
+    canvasViewportWidthRate(canvasWidth / viewportWidth), canvasViewportHeightRate(canvasHeight / viewportHeight)
 
 {
 }
@@ -62,49 +40,97 @@ Canvas::~Canvas()
 {
 }
 
-void Canvas::RunRenderByRayTrace() const
+
+double Canvas::ConvertXToViewportCoordinate(const double& x) const
 {
-    const int numThreads = std::thread::hardware_concurrency(); // 获取可用的线程数
-    std::vector<std::thread> threads;
-    std::vector<std::vector<COLORREF>> buffer(canvasHeight, std::vector<COLORREF>(canvasWidth));
-
-    int sectionHeight = canvasHeight / numThreads;
-    for (int i = 0; i < numThreads; ++i)
-    {
-        int startY = i * sectionHeight;
-        int endY = (i == numThreads - 1) ? canvasHeight : startY + sectionHeight; // 确保最后一个线程处理剩余的行
-        threads.emplace_back(&Canvas::RenderSectionByRayTrace, this, startY, endY, std::ref(buffer));
-    }
-
-    // 等待所有线程完成
-    for (auto& thread : threads)
-    {
-        thread.join();
-    }
-
-   MergeBuffer(buffer);
-
+    return (x - canvasMaxX) * viewportCanvasWidthRate;
 }
 
-void Canvas::RunRenderByRasterization() const
+double Canvas::ConvertYToViewportCoordinate(const double& y) const
 {
-	resetCanvas();
-    std::array<int, 2> p0 = { -200,-250 };
-	std::array<int, 2> p1 = { 200,50 };
-	std::array<int, 2> p2 = { 20,250 };
-    double h0 = 1;
-    double h1 = 0.5;
-    double h2 = 0;
+    return (-y + canvasMaxY) * viewportCanvasHeightRate;
+}
 
-    std::array<int, 3> color = { 0,255,0 };
+int Canvas::ConvertXToCanvasCoordinate(const double& x) const
+{
+    return x * canvasViewportWidthRate + canvasMaxX;
+}
 
-    std::vector<Pixel*> pixels = renderRasterizationTrace->DrawShadedTriangle(p0, p1,p2,h0,h1,h2, color);
-	for (auto pixel : pixels)
-	{
-		const auto& position = pixel->GetPosition();
-		const auto& color = pixel->GetColor();
-		SetPixel(hMemDC, position[0]+canvasMaxX, -position[1]+canvasMaxY, RGB(color[0], color[1], color[2]));
-        delete pixel;
-	}
+int Canvas::ConvertYToCanvasCoordinate(const double& y) const
+{
+    return canvasMaxY - y * canvasViewportHeightRate;
+}
 
+std::array<int, 2> Canvas::ConvertPointToCanvasCoordinate(const std::array<double, 2>& position) const
+{
+    std::array<int, 2> screenPosition;
+    screenPosition[0] = ConvertXToCanvasCoordinate(position[0]);
+    screenPosition[1] = ConvertYToCanvasCoordinate(position[1]);
+    return screenPosition;
+}
+
+//const std::vector<Object*>& Canvas::getObjects() const
+//{
+//    return objects;
+//}
+//const std::vector<Light*>& Canvas::getLights() const
+//{
+//    return lights;
+//}
+const Camera* Canvas::getCamera() const
+{
+    return camera;
+}
+const int& Canvas::getCanvasWidth() const
+{
+    return canvasWidth;
+}
+
+const int& Canvas::getCanvasHeight() const
+{
+    return canvasHeight;
+}
+const int& Canvas::getCanvasMinX() const
+{
+    return canvasMinX;
+}
+const int& Canvas::getCanvasMaxX() const
+{
+    return canvasMaxX;
+}
+const int& Canvas::getCanvasMinY() const
+{
+    return canvasMinY;
+}
+const int& Canvas::getCanvasMaxY() const
+{
+    return canvasMaxY;
+}
+const double& Canvas::getViewportWidth() const
+{
+    return viewportWidth;
+}
+const double& Canvas::getViewportHeight() const
+{
+    return viewportHeight;
+}
+const double& Canvas::getViewportDistance() const
+{
+    return viewportDistance;
+}
+const double& Canvas::getViewportCanvasWidthRate() const
+{
+    return viewportCanvasWidthRate;
+}
+const double& Canvas::getViewportCanvasHeightRate() const
+{
+    return viewportCanvasHeightRate;
+}
+const double& Canvas::getCanvasViewportWidthRate() const
+{
+    return canvasViewportWidthRate;
+}
+const double& Canvas::getCanvasViewportHeightRate() const
+{
+    return canvasViewportHeightRate;
 }

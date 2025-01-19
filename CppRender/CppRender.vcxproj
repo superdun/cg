@@ -136,12 +136,16 @@
     <ClInclude Include="CppRender.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="Model.h" />
+    <ClInclude Include="ModelInstance.h" />
     <ClInclude Include="Pixel.h" />
     <ClInclude Include="RasterizationRender.h" />
     <ClInclude Include="RayTraceRender.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="Transform.h" />
+    <ClInclude Include="Triangle.h" />
     <ClInclude Include="VectorHelper.h" />
   </ItemGroup>
   <ItemGroup>
@@ -151,10 +155,14 @@
     <ClCompile Include="CppRender.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="LightTypeEnum.h" />
+    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="ModelInstance.cpp" />
     <ClCompile Include="Pixel.cpp" />
     <ClCompile Include="RasterizationRender.cpp" />
     <ClCompile Include="RayTraceRender.cpp" />
     <ClCompile Include="Sphere.cpp" />
+    <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="VectorHelper.cpp" />
   </ItemGroup>
   <ItemGroup>

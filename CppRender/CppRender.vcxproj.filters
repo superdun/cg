@@ -54,6 +54,18 @@
     <ClInclude Include="Pixel.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Triangle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelInstance.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Transform.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CppRender.cpp">
@@ -87,6 +99,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Pixel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Model.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Triangle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelInstance.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Transform.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

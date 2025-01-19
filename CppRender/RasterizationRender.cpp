@@ -1,9 +1,12 @@
 #include "RasterizationRender.h"
 #include <algorithm>
 #include "VectorHelper.h"
-RasterizationRender::RasterizationRender()
+#include <unordered_map>
+RasterizationRender::RasterizationRender( Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera)
+	:instances(instances), canvas(canvas), camera(camera)
 {
 }
+
 
 RasterizationRender::~RasterizationRender()
 {
@@ -62,7 +65,7 @@ std::vector<Pixel*> RasterizationRender::DrawLine(const std::array<int, 2> p0, c
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3> color) const
+std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3>& color) const
 {
 
 
@@ -77,7 +80,7 @@ std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3> color) const
+std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3>& color) const
 {
 	std::vector<Pixel*> result;
 	std::array<int, 2> p0_new = p0;
@@ -129,7 +132,7 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double h0, const double h1, const double h2,  const std::array<int, 3> color) const
+std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double h0, const double h1, const double h2,  const std::array<int, 3>& color) const
 {
 	std::vector<Pixel*> result;
 	std::array<int, 2> p0_new = p0;
@@ -197,5 +200,64 @@ std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int
 
 	return result;
 }
+
+std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double, 3>& vertex,const double d, const std::array<double, 3>& modelPosition) const
+{
+	const double dRate = d / (vertex[2] - camera->GetPosition()[2] + modelPosition[2]);
+	const double x = (vertex[0] - camera->GetPosition()[0] + modelPosition[0]) * dRate;
+	const double y = (vertex[1] - camera->GetPosition()[1] + modelPosition[1]) * dRate;
+
+	return { x ,y };
+
+}
+
+std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance) const
+{
+	std::vector<Pixel*> result;
+	std::unordered_map<const std::array<double, 3>*, std::array<int, 2>> projectedPoints;
+	const Model* model = instance.GetModel();
+	for (auto& vertice : model->getVertices())
+	{
+		auto tmpVertice = ProjectVertex(vertice, canvas->getViewportDistance(), instance.GetPosition());
+		projectedPoints[&vertice] = canvas->ConvertPointToCanvasCoordinate(tmpVertice);
+	}
+	for (const auto& triangle : model->getTriangles())
+	{
+		const auto& p0 = projectedPoints[triangle.getV0Pointer()];
+		const auto& p1 = projectedPoints[triangle.getV1Pointer()];
+		const auto& p2 = projectedPoints[triangle.getV2Pointer()];
+
+		auto pixels = DrawWireFrameTriangle(p0, p1, p2, triangle.getColor());
+		result.insert(result.end(), pixels.begin(), pixels.end());
+	}
+	return result;
+}
+
+void RasterizationRender::RunRender() const
+{
+	canvas->resetCanvas();
+	std::vector<Pixel*> pixels;
+	for (auto instance : instances)
+	{
+		auto tmpPixels = RenderInstance(*instance);
+		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
+
+	}
+	for (auto pixel : pixels)
+	{
+		const auto& position = pixel->GetPosition();
+		const auto& color = pixel->GetColor();
+		canvas->PutPixel( position[0], position[1], RGB(color[0], color[1], color[2]));
+		delete pixel;
+	}
+}
+
+void RasterizationRender::SetCanvas( Canvas* canvasPointer)
+{
+	canvas = canvasPointer;
+}
+
+
+
 
 

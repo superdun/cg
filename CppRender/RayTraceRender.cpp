@@ -1,6 +1,9 @@
+#define NOMINMAX
 #include "RayTraceRender.h"
 #include <algorithm> 
 #include <tuple>
+#include <iostream>
+#include <thread>
 
 double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
 {
@@ -65,10 +68,73 @@ double RayTraceRender::SpecularReflectionScale(const std::array<double, 3>& orig
 	return  std::max(0.0, std::pow(VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)),specular));
 }
 
-RayTraceRender::RayTraceRender(const std::vector<const Sphere*>& sphereList, const std::vector<const Light*>& lightList, const Camera* camera)
-	:sphereList(sphereList),lightList(lightList),camera(camera)
+void RayTraceRender::RenderSection(int startY, int endY, std::vector<std::vector<COLORREF>>& buffer) const
 {
+    for (int x = 0; x <  canvas->getCanvasWidth(); x++)
+    {
+        for (int y = startY; y < endY; y++)
+        {
+            double viewportX = canvas->ConvertXToViewportCoordinate(x);
+            double viewportY = canvas->ConvertYToViewportCoordinate(y);
 
+            std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,canvas->getViewportDistance()}, {0,0,0});
+            directionVector = VectorHelper::VecRotate(directionVector, 0, camera->GetAngleY(), 0);
+            auto colorArray = GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
+            COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
+            buffer[y][x] = colorPixelRef;
+        }
+    }
+}
+
+void RayTraceRender::MergeBuffer(std::vector<std::vector<COLORREF>>& buffer) const
+{
+    for (int y = 0; y < canvas->getCanvasHeight(); y++)
+    {
+        for (int x = 0; x < canvas->getCanvasWidth(); x++)
+        {
+            canvas->PutPixel( x, y, buffer[y][x]);
+        }
+    }
+}
+
+RayTraceRender::RayTraceRender( Canvas* canvas, const std::vector<const Sphere*>& sphereList, const std::vector<const Light*>& lightList, const Camera* camera)
+	:canvas(canvas), sphereList(sphereList),lightList(lightList),camera(camera)
+{
+   
+
+}
+
+RayTraceRender::~RayTraceRender()
+{
+}
+
+
+void RayTraceRender::RunRender() const
+{
+    const int numThreads = std::thread::hardware_concurrency(); // 获取可用的线程数
+    std::vector<std::thread> threads;
+    std::vector<std::vector<COLORREF>> buffer(canvas->getCanvasHeight(), std::vector<COLORREF>(canvas->getCanvasWidth()));
+
+    int sectionHeight = canvas->getCanvasHeight() / numThreads;
+    for (int i = 0; i < numThreads; ++i)
+    {
+        int startY = i * sectionHeight;
+        int endY = (i == numThreads - 1) ? canvas->getCanvasHeight() : startY + sectionHeight; // 确保最后一个线程处理剩余的行
+        threads.emplace_back(&RayTraceRender::RenderSection, this, startY, endY, std::ref(buffer));
+    }
+
+    // 等待所有线程完成
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    MergeBuffer(buffer);
+}
+
+void RayTraceRender::SetCanvas(Canvas* canvasPointer)
+{
+    canvas = canvasPointer;
 }
 
 
