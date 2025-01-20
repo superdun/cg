@@ -19,6 +19,15 @@ public:
     static double AngleOfVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2);
     static std::array<double, 3> GetReflectVector(const std::array<double, 3>& v1, const std::array<double, 3>& normal);
     static  std::array<double, 3> VecRotate(const std::array<double, 3>& vector, double angleWithAxisX, double angleWithAxisY, double angleWithAxisZ);
+    static std::array<std::array<double, 4>, 4> BuildModelCompositeMatrix(
+        const std::array<double, 3>& scale,
+        const std::array<double, 3>& angleWithAxis,
+        const std::array<double, 3>& translate,
+        const double d);
+    static std::array<std::array<double, 4>, 4> BuildCameraCompositeMatrix(
+        const std::array<double, 3>& angleWithAxis,
+        const std::array<double, 3>& translate,
+        const double d);
 };
 
 #endif // VECTORHELPER_H

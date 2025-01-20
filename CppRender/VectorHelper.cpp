@@ -72,30 +72,75 @@ std::array<double, 3> VectorHelper::GetReflectVector(const std::array<double, 3>
 
     return VectorHelper::VectorSub(VectorHelper::VectorScale(normal, 2 * VectorHelper::VectorDot(normal, originRay)), originRay); ;
 }
-
 std::array<double, 3> VectorHelper::VecRotate(const std::array<double, 3>& vector, double angleWithAxisX, double angleWithAxisY, double angleWithAxisZ)
 {
-    std::array<double, 3> result;
+    return std::array<double, 3>();
+}
+std::array<std::array<double, 4>, 4> VectorHelper::BuildModelCompositeMatrix(
+    const std::array<double, 3>& scale,
+    const std::array<double, 3>& angleWithAxis,
+    const std::array<double, 3>& translate,
+    const double d)
+{
+    // 提取缩放
+    double sx = scale[0];
+    double sy = scale[1];
+    double sz = scale[2];
 
-    // Rotate around Z-axis
-    double xWithAxisZ = vector[0] * cos(angleWithAxisZ) - vector[1] * sin(angleWithAxisZ);
-    double yWithAxisZ = vector[0] * sin(angleWithAxisZ) + vector[1] * cos(angleWithAxisZ);
-    double zWithAxisZ = vector[2];
+    // 提取旋转角度
+    double theta_x = angleWithAxis[0]; // 绕 x 轴
+    double theta_y = angleWithAxis[1]; // 绕 y 轴
+    double theta_z = angleWithAxis[2]; // 绕 z 轴
 
-    // Rotate around Y-axis
-    double xWithAxisY = xWithAxisZ * cos(angleWithAxisY) - zWithAxisZ * sin(angleWithAxisY);
-    double yWithAxisY = yWithAxisZ; // unchanged
-    double zWithAxisY = xWithAxisZ * sin(angleWithAxisY) + zWithAxisZ * cos(angleWithAxisY);
+    // 计算三角函数
+    double cos_x = std::cos(theta_x);
+    double sin_x = std::sin(theta_x);
+    double cos_y = std::cos(theta_y);
+    double sin_y = std::sin(theta_y);
+    double cos_z = std::cos(theta_z);
+    double sin_z = std::sin(theta_z);
 
-    // Rotate around X-axis
-    double xWithAxisX = xWithAxisY; // unchanged
-    double yWithAxisX = zWithAxisY * sin(angleWithAxisX) + yWithAxisY * cos(angleWithAxisX);
-    double zWithAxisX = zWithAxisY * cos(angleWithAxisX) - yWithAxisY * sin(angleWithAxisX);
+    // 构建组合变换矩阵 M
+    std::array<std::array<double, 4>, 4> M = { {
+        { (sx * cos_y * cos_z) / d, (-sy * cos_y * sin_z) / d, sz * sin_y, translate[0] },
+        { (sx * sin_z * cos_x) / d, (sy * cos_z * cos_x) / d, (-sz * sin_x) / d, translate[1] },
+        { (-sin_y * cos_z + sin_x * sin_y * sin_z) / d,
+          (sin_y * sin_z + sin_x * cos_y * cos_z) / d,
+          cos_y * cos_x, translate[2] },
+        { 0, 0, 0, 1 }
+    } };
 
-    result[0] = xWithAxisX;
-    result[1] = yWithAxisX;
-    result[2] = zWithAxisX;
+    return M;
+}
 
-    return result;
+std::array<std::array<double, 4>, 4> VectorHelper::BuildCameraCompositeMatrix(
+    const std::array<double, 3>& angleWithAxis,
+    const std::array<double, 3>& translate,
+    const double d)
+{
+    double dx = translate[0];
+    double dy = translate[1];
+    double dz = translate[2];
+
+    double theta_x = angleWithAxis[0];
+    double theta_y = angleWithAxis[1];
+    double theta_z = angleWithAxis[2];
+
+    double cos_x = std::cos(theta_x);
+    double sin_x = std::sin(theta_x);
+    double cos_y = std::cos(theta_y);
+    double sin_y = std::sin(theta_y);
+    double cos_z = std::cos(theta_z);
+    double sin_z = std::sin(theta_z);
+
+    // 最终组合矩阵 M
+    std::array<std::array<double, 4>, 4> M_final = { {
+        {cos_y * cos_z, cos_y * sin_z, -sin_y, -dx},
+        {-sin_x * sin_y * cos_z + sin_z * cos_x, -sin_x * sin_y * sin_z - cos_z * cos_x, sin_x * cos_y, -dy},
+        {sin_x * sin_y * sin_z + sin_y * cos_x, sin_x * sin_y * cos_z - sin_z * cos_x, cos_y * cos_x, -dz},
+        {0, 0, 0, 1}
+    } };
+
+    return M_final; 
 }
 
