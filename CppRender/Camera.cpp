@@ -19,14 +19,14 @@ std::array<double, 3> Camera::GetDirection() const
 	return direction;
 }
 
-double Camera::GetAngleY() const
+double Camera::GetAngle() const
 {
-	return angelY;
+	return angle;
 }
 
 void Camera::Move() 
 {
-	angelY += 0.01;
+	angle += 0.01;
 	position[1] = position[1] + 0.01;
 	position[2] = position[2]+0.01;
 }

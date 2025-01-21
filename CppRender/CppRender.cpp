@@ -68,8 +68,10 @@ const std::vector<Triangle> triangles = {
     Triangle(&vertexes[2], &vertexes[7], &vertexes[3], {0, 255, 255})
 };
 
+Transform* transform = new Transform();
+
 const Model object("cube", vertexes, triangles);
-const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },nullptr),new ModelInstance(&object, { 1.25, 2, 7.5 },nullptr) };
+const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform),new ModelInstance(&object, { 1.25, 2, 7.5 },transform) };
 
 int frameCount = 0;
 float fps = 0.0f;
@@ -238,6 +240,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SelectObject(hMemDC, hBitmap);
 
                 Canvas* canvas = new Canvas( hMemDC, width, height, camera);
+				transform->SetRotateState({0,1,0}, transform->GetAngle()+0.1);
                 //camera->Forward();
 
 				//rayTraceRender->SetCanvas(canvas);

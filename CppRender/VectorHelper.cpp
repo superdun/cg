@@ -34,9 +34,9 @@ std::array<double, 3> VectorHelper::VectorScale(const std::array<double, 3>& v, 
     return result;
 }
 
-std::array<int, 3> VectorHelper::ColorVectorScale(const std::array<int, 3>&v, double scale) {
+std::array<int, 3> VectorHelper::ColorVectorScale(const std::array<int, 3>& v, double scale) {
     std::array<int, 3> result;
-    result[0] = std::min(static_cast<int>( v[0] * scale),255);
+    result[0] = std::min(static_cast<int>(v[0] * scale), 255);
     result[1] = std::min(static_cast<int>(v[1] * scale), 255);
     result[2] = std::min(static_cast<int>(v[2] * scale), 255);
     return result;
@@ -72,75 +72,156 @@ std::array<double, 3> VectorHelper::GetReflectVector(const std::array<double, 3>
 
     return VectorHelper::VectorSub(VectorHelper::VectorScale(normal, 2 * VectorHelper::VectorDot(normal, originRay)), originRay); ;
 }
+
 std::array<double, 3> VectorHelper::VecRotate(const std::array<double, 3>& vector, double angleWithAxisX, double angleWithAxisY, double angleWithAxisZ)
 {
-    return std::array<double, 3>();
+    std::array<double, 3> result;
+
+    // Rotate around Z-axis
+    double xWithAxisZ = vector[0] * cos(angleWithAxisZ) - vector[1] * sin(angleWithAxisZ);
+    double yWithAxisZ = vector[0] * sin(angleWithAxisZ) + vector[1] * cos(angleWithAxisZ);
+    double zWithAxisZ = vector[2];
+
+    // Rotate around Y-axis
+    double xWithAxisY = xWithAxisZ * cos(angleWithAxisY) - zWithAxisZ * sin(angleWithAxisY);
+    double yWithAxisY = yWithAxisZ; // unchanged
+    double zWithAxisY = xWithAxisZ * sin(angleWithAxisY) + zWithAxisZ * cos(angleWithAxisY);
+
+    // Rotate around X-axis
+    double xWithAxisX = xWithAxisY; // unchanged
+    double yWithAxisX = zWithAxisY * sin(angleWithAxisX) + yWithAxisY * cos(angleWithAxisX);
+    double zWithAxisX = zWithAxisY * cos(angleWithAxisX) - yWithAxisY * sin(angleWithAxisX);
+
+    result[0] = xWithAxisX;
+    result[1] = yWithAxisX;
+    result[2] = zWithAxisX;
+
+    return result;
 }
-std::array<std::array<double, 4>, 4> VectorHelper::BuildModelCompositeMatrix(
-    const std::array<double, 3>& scale,
-    const std::array<double, 3>& angleWithAxis,
-    const std::array<double, 3>& translate,
-    const double d)
+
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DScaleMatrix(const double scale)
 {
-    // 提取缩放
-    double sx = scale[0];
-    double sy = scale[1];
-    double sz = scale[2];
-
-    // 提取旋转角度
-    double theta_x = angleWithAxis[0]; // 绕 x 轴
-    double theta_y = angleWithAxis[1]; // 绕 y 轴
-    double theta_z = angleWithAxis[2]; // 绕 z 轴
-
-    // 计算三角函数
-    double cos_x = std::cos(theta_x);
-    double sin_x = std::sin(theta_x);
-    double cos_y = std::cos(theta_y);
-    double sin_y = std::sin(theta_y);
-    double cos_z = std::cos(theta_z);
-    double sin_z = std::sin(theta_z);
-
-    // 构建组合变换矩阵 M
-    std::array<std::array<double, 4>, 4> M = { {
-        { (sx * cos_y * cos_z) / d, (-sy * cos_y * sin_z) / d, sz * sin_y, translate[0] },
-        { (sx * sin_z * cos_x) / d, (sy * cos_z * cos_x) / d, (-sz * sin_x) / d, translate[1] },
-        { (-sin_y * cos_z + sin_x * sin_y * sin_z) / d,
-          (sin_y * sin_z + sin_x * cos_y * cos_z) / d,
-          cos_y * cos_x, translate[2] },
-        { 0, 0, 0, 1 }
+    std::array< std::array<double, 4>, 4> matrix = { {
+        {scale,0,0,0},
+        {0,scale,0,0},
+        {0,0,scale,0},
+        {0,0,0,1}
     } };
-
-    return M;
+    return matrix;
 }
 
-std::array<std::array<double, 4>, 4> VectorHelper::BuildCameraCompositeMatrix(
-    const std::array<double, 3>& angleWithAxis,
-    const std::array<double, 3>& translate,
-    const double d)
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DScaleMatrix(const std::array<double, 3>& scale)
 {
-    double dx = translate[0];
-    double dy = translate[1];
-    double dz = translate[2];
-
-    double theta_x = angleWithAxis[0];
-    double theta_y = angleWithAxis[1];
-    double theta_z = angleWithAxis[2];
-
-    double cos_x = std::cos(theta_x);
-    double sin_x = std::sin(theta_x);
-    double cos_y = std::cos(theta_y);
-    double sin_y = std::sin(theta_y);
-    double cos_z = std::cos(theta_z);
-    double sin_z = std::sin(theta_z);
-
-    // 最终组合矩阵 M
-    std::array<std::array<double, 4>, 4> M_final = { {
-        {cos_y * cos_z, cos_y * sin_z, -sin_y, -dx},
-        {-sin_x * sin_y * cos_z + sin_z * cos_x, -sin_x * sin_y * sin_z - cos_z * cos_x, sin_x * cos_y, -dy},
-        {sin_x * sin_y * sin_z + sin_y * cos_x, sin_x * sin_y * cos_z - sin_z * cos_x, cos_y * cos_x, -dz},
-        {0, 0, 0, 1}
+    std::array< std::array<double, 4>, 4> matrix = { {
+        {scale[0],0,0,0},
+        {0,scale[1],0,0},
+        {0,0,scale[2],0},
+        {0,0,0,1}
     } };
-
-    return M_final; 
+    return matrix;
 }
 
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DRotationMatrix(const double angle, const std::array<double, 3>& axis)
+{
+    double c = cos(angle);
+    double s = sin(angle);
+    double x = axis[0];
+    double y = axis[1];
+    double z = axis[2];
+    std::array<std::array<double, 4>, 4> matrix = { {
+        {c + x * x * (1 - c),x * y * (1 - c) + z * s,x * z * (1 - c) - y * s,0},
+        {x * y * (1 - c) - z * s,c + y * y * (1 - c),y * z * (1 - c) + x * s,0},
+        {z * x * (1 - c) + y * s,z * y * (1 - c) - x * s,c + z * z * (1 - c),0},
+        {0,0,0,1}
+    } };
+    return matrix;
+
+}
+
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DRotateInverseMatrix(const double angle, const std::array<double, 3>& axis)
+{
+    double c = cos(angle);
+    double s = sin(angle);
+    double x = axis[0];
+    double y = axis[1];
+    double z = axis[2];
+
+    std::array<std::array<double, 4>, 4> matrix = { {
+        {c + x * x * (1 - c),x * y * (1 - c) - z * s,x * z * (1 - c) + y * s,0},
+        {x * y * (1 - c) + z * s,c + y * y * (1 - c),y * z * (1 - c) - x * s,0},
+        {z * x * (1 - c) - y * s,z * y * (1 - c) + x * s,c + z * z * (1 - c),0},
+        {0,0,0,1}
+        } };
+    return matrix;
+
+}
+
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DTranslationMatrix(const std::array<double, 3>& translation)
+{
+    std::array<std::array<double, 4>, 4> matrix = { {
+            {1,0,0,0},
+            {0,1,0,0},
+            {0,0,1,0},
+            {translation[0],translation[1],translation[2],1}
+    } };
+    return matrix;
+}
+
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DInverseTranslationMatrix(const std::array<double, 3>& translation)
+{
+    std::array<std::array<double, 4>, 4> matrix = { {
+            {1, 0, 0, 0},
+            {0, 1, 0, 0},
+            {0, 0, 1, 0},
+            {-translation[0], -translation[1], -translation[2], 1}
+        } };
+    return matrix;
+}
+
+std::array<double, 4> VectorHelper::VerticeMatrixMultiply(const std::array< double, 4>& vertice, const std::array< std::array<double, 4>, 4>& matrix)
+{
+    std::array<double, 4> result;
+    for (int i = 0; i < 4; i++) {
+        result[i] = vertice[0] * matrix[0][i] + vertice[1] * matrix[1][i] + vertice[2] * matrix[2][i] + vertice[3] * matrix[3][i];
+    }
+    return result;
+}
+
+std::array< std::array<double, 4>, 4> VectorHelper::MatrixMultiply(const std::array< std::array<double, 4>, 4>& matrix1, const std::array< std::array<double, 4>, 4>& matrix2)
+{
+    std::array< std::array<double, 4>, 4> result;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            result[i][j] = matrix1[i][0] * matrix2[0][j] + matrix1[i][1] * matrix2[1][j] + matrix1[i][2] * matrix2[2][j] + matrix1[i][3] * matrix2[3][j];
+        }
+    }
+    return result;
+}
+
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DProjectionViewportToCanvasMatrix(const double viewportDistance, const double canvasWidth, const double canvasHeight, const double viewportWidth, const double viewportHeight)
+{
+    std::array< std::array<double, 4>, 4> matrix = { {
+        {viewportDistance * canvasWidth / viewportWidth,0,0,0},
+        {0,viewportDistance * canvasHeight / viewportHeight,0,0},
+        {0,0,1,0},
+        {0,0,0,1}
+    } };
+    return matrix;
+}
+std::array<double, 4> VectorHelper::BuildHomogeneousPoint(const std::array<double, 3>& point)
+{
+    std::array<double, 4> result = { point[0],point[1],point[2],1 };
+    return result;
+}
+
+std::array<double, 3> VectorHelper::Build3DPoint(const std::array<double, 4>& point)
+{
+    std::array<double, 3> result = { point[0] / point[3],point[1] / point[3],point[2] / point[3] };
+    return result;
+}
+
+std::array<double, 2> VectorHelper::Build2DPoint(const std::array<double, 4>& point)
+{
+    std::array<double, 2> result = { point[0] / point[2],point[1] / point[2] };
+    return result;
+}

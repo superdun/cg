@@ -64,10 +64,12 @@ int Canvas::ConvertYToCanvasCoordinate(const double& y) const
 std::array<int, 2> Canvas::ConvertPointToCanvasCoordinate(const std::array<double, 2>& position) const
 {
     std::array<int, 2> screenPosition;
-    screenPosition[0] = ConvertXToCanvasCoordinate(position[0]);
-    screenPosition[1] = ConvertYToCanvasCoordinate(position[1]);
+    screenPosition[0] = position[0]+ canvasMaxX;
+    screenPosition[1] = canvasMaxY - position[1];
     return screenPosition;
 }
+
+
 
 //const std::vector<Object*>& Canvas::getObjects() const
 //{

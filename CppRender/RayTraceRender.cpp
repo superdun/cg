@@ -78,7 +78,7 @@ void RayTraceRender::RenderSection(int startY, int endY, std::vector<std::vector
             double viewportY = canvas->ConvertYToViewportCoordinate(y);
 
             std::array<double, 3> directionVector = VectorHelper::VectorSub({ viewportX,viewportY,canvas->getViewportDistance()}, {0,0,0});
-            directionVector = VectorHelper::VecRotate(directionVector, 0, camera->GetAngleY(), 0);
+            directionVector = VectorHelper::VecRotate(directionVector, 0, camera->GetAngle(), 0);
             auto colorArray = GetViewPointColor(camera->GetPosition(), directionVector, 1, Constants::Infinity, 1);
             COLORREF colorPixelRef = RGB(colorArray[0], colorArray[1], colorArray[2]);
             buffer[y][x] = colorPixelRef;

@@ -22,7 +22,7 @@ public:
 	std::vector<Pixel*> DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3>& color) const;
 	std::vector<Pixel*> DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double h1, const double h2,const double h3, const std::array<int, 3>& color) const;
 	std::array<double, 2> ProjectVertex(const std::array<double, 3>& vertex, const double d, const std::array<double, 3>& modelPosition) const;
-	std::vector<Pixel*> RenderInstance(const ModelInstance& model) const;
+	std::vector<Pixel*> RenderInstance(const ModelInstance& model, const std::array< std::array<double, 4>, 4>& matrix_camera) const;
 	void RunRender() const;
 	void SetCanvas( Canvas* canvas);
 };

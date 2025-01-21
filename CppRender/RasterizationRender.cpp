@@ -211,15 +211,25 @@ std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double
 
 }
 
-std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance) const
+std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance, const std::array< std::array<double, 4>, 4>& matrix_camera) const
 {
 	std::vector<Pixel*> result;
 	std::unordered_map<const std::array<double, 3>*, std::array<int, 2>> projectedPoints;
 	const Model* model = instance.GetModel();
+	auto matrix_model_scale = VectorHelper::Build4DScaleMatrix(instance.GetScale());
+	auto matrix_model_rotate = VectorHelper::Build4DRotationMatrix(instance.GetAngle(), instance.GetRotate());
+	auto matrix_model_translate = VectorHelper::Build4DTranslationMatrix(instance.GetPosition());
+	auto matrix_model = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model_scale, matrix_model_rotate), matrix_model_translate);
+
+
+	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());	
 	for (auto& vertice : model->getVertices())
 	{
-		auto tmpVertice = ProjectVertex(vertice, canvas->getViewportDistance(), instance.GetPosition());
-		projectedPoints[&vertice] = canvas->ConvertPointToCanvasCoordinate(tmpVertice);
+		auto homoVertice = VectorHelper::BuildHomogeneousPoint(vertice);
+		auto m = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model, matrix_camera),matrix_viewport);
+		auto newVertice = VectorHelper::Build2DPoint(VectorHelper::VerticeMatrixMultiply(homoVertice,m));
+
+		projectedPoints[&vertice] = canvas->ConvertPointToCanvasCoordinate(newVertice);
 	}
 	for (const auto& triangle : model->getTriangles())
 	{
@@ -237,9 +247,13 @@ void RasterizationRender::RunRender() const
 {
 	canvas->resetCanvas();
 	std::vector<Pixel*> pixels;
+	auto matrix_camera = VectorHelper::MatrixMultiply(
+		VectorHelper::Build4DInverseTranslationMatrix(camera->GetPosition()),
+		VectorHelper::Build4DRotateInverseMatrix(camera->GetAngle(), camera->GetDirection())
+	);
 	for (auto instance : instances)
 	{
-		auto tmpPixels = RenderInstance(*instance);
+		auto tmpPixels = RenderInstance(*instance, matrix_camera);
 		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
 
 	}
