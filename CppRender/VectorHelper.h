@@ -1,9 +1,10 @@
+
 #ifndef VECTORHELPER_H
 #define VECTORHELPER_H
 
 #include <array>
-#include <cmath> // 为了使用 sqrt 和 acos
-
+#include <cmath> // 为锟斤拷使锟斤拷 sqrt 锟斤拷 acos
+#include "Plane.h"
 class VectorHelper
 {
 public:
@@ -31,6 +32,9 @@ public:
     static std::array<double, 4> BuildHomogeneousPoint(const std::array<double, 3>& point);
     static std::array<double, 3> Build3DPoint(const std::array<double, 4>& point);
     static std::array<double, 2> Build2DPoint(const std::array<double, 4>& point);
+    static double GetSingnedVertexToPlaneDistance(const std::array<double, 3>& vertex, const Plane* plane);
+    static std::array<double, 3> GetPlaneNormal(const std::array<double, 4>& plane);
+    static std::array<double, 3> GetPlaneLineIntersection(const Plane& plane, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB);
 };
 
 #endif // VECTORHELPER_H

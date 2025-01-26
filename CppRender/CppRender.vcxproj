@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BoundingSphere.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Canvas.h" />
     <ClInclude Include="Constants.h" />
@@ -139,6 +140,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="ModelInstance.h" />
     <ClInclude Include="Pixel.h" />
+    <ClInclude Include="Plane.h" />
     <ClInclude Include="RasterizationRender.h" />
     <ClInclude Include="RayTraceRender.h" />
     <ClInclude Include="Resource.h" />
@@ -149,6 +151,7 @@
     <ClInclude Include="VectorHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BoundingSphere.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Canvas.cpp" />
     <ClCompile Include="Constants.cpp" />
@@ -158,11 +161,13 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModelInstance.cpp" />
     <ClCompile Include="Pixel.cpp" />
+    <ClCompile Include="Plane.cpp" />
     <ClCompile Include="RasterizationRender.cpp" />
     <ClCompile Include="RayTraceRender.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Triangle.cpp" />
+    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="VectorHelper.cpp" />
   </ItemGroup>
   <ItemGroup>

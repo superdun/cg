@@ -9,22 +9,37 @@ Triangle::~Triangle()
 {
 }
 
-const std::array<double, 3>* Triangle::getV0Pointer() const
+const std::array<double, 3>* Triangle::GetV0Pointer() const
 {
     return v0Pointer;
 }
 
-const std::array<double, 3>* Triangle::getV1Pointer() const
+const std::array<double, 3>* Triangle::GetV1Pointer() const
 {
     return v1Pointer;
 }
 
-const std::array<double, 3>* Triangle::getV2Pointer() const
+const std::array<double, 3>* Triangle::GetV2Pointer() const
 {
     return v2Pointer;
 }
 
-const std::array<int, 3>& Triangle::getColor() const
+const std::array<double, 3>& Triangle::GetV0() const
+{
+    return *v0Pointer;
+}
+
+const std::array<double, 3>& Triangle::GetV1() const
+{
+    return *v1Pointer;
+}
+
+const std::array<double, 3>& Triangle::GetV2() const
+{
+    return *v2Pointer;
+}
+
+const std::array<int, 3>& Triangle::GetColor() const
 {
     return color;
 }

@@ -13,6 +13,7 @@
 #include <chrono>  // For std::chrono::seconds
 #include "Canvas.h"
 #include <iostream>
+#include "Plane.h"
 #define MAX_LOADSTRING 100
 #define TIMER_ID 1
 #define TIMER_INTERVAL 160 
@@ -53,25 +54,33 @@ const std::vector< std::array<double, 3>> vertexes = {
     {{1, -1, -1}}
 };
 
-const std::vector<Triangle> triangles = {
-    Triangle(&vertexes[0], &vertexes[1], &vertexes[2], {255, 0, 0}),
-    Triangle(&vertexes[0], &vertexes[2], &vertexes[3], {255, 0, 0}),
-    Triangle(&vertexes[4], &vertexes[0], &vertexes[3], {0, 255, 0}),
-    Triangle(&vertexes[4], &vertexes[3], &vertexes[7], {0, 255, 0}),
-    Triangle(&vertexes[5], &vertexes[4], &vertexes[7], {0, 0, 255}),
-    Triangle(&vertexes[5], &vertexes[7], &vertexes[6], {0, 0, 255}),
-    Triangle(&vertexes[1], &vertexes[5], &vertexes[6], {255, 255, 0}),
-    Triangle(&vertexes[1], &vertexes[6], &vertexes[2], {255, 255, 0}),
-    Triangle(&vertexes[4], &vertexes[5], &vertexes[1], {255, 0, 255}),
-    Triangle(&vertexes[4], &vertexes[1], &vertexes[0], {255, 0, 255}),
-    Triangle(&vertexes[2], &vertexes[6], &vertexes[7], {0, 255, 255}),
-    Triangle(&vertexes[2], &vertexes[7], &vertexes[3], {0, 255, 255})
+const std::vector<Triangle*> triangles = {
+    new Triangle(&vertexes[0], &vertexes[1], &vertexes[2], {255, 0, 0}),
+    new Triangle(&vertexes[0], &vertexes[2], &vertexes[3], {255, 0, 0}),
+    new Triangle(&vertexes[4], &vertexes[0], &vertexes[3], {0, 255, 0}),
+    new Triangle(&vertexes[4], &vertexes[3], &vertexes[7], {0, 255, 0}),
+    new Triangle(&vertexes[5], &vertexes[4], &vertexes[7], {0, 0, 255}),
+    new Triangle(&vertexes[5], &vertexes[7], &vertexes[6], {0, 0, 255}),
+    new Triangle(&vertexes[1], &vertexes[5], &vertexes[6], {255, 255, 0}),
+    new Triangle(&vertexes[1], &vertexes[6], &vertexes[2], {255, 255, 0}),
+    new Triangle(&vertexes[4], &vertexes[5], &vertexes[1], {255, 0, 255}),
+    new Triangle(&vertexes[4], &vertexes[1], &vertexes[0], {255, 0, 255}),
+    new Triangle(&vertexes[2], &vertexes[6], &vertexes[7], {0, 255, 255}),
+    new Triangle(&vertexes[2], &vertexes[7], &vertexes[3], {0, 255, 255})
 };
 
 Transform* transform = new Transform();
-
-const Model object("cube", vertexes, triangles);
+const auto boundingSphere = new BoundingSphere({0,0,0}, 2*sqrt(3));
+const Model object("cube", triangles,boundingSphere);
 const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform),new ModelInstance(&object, { 1.25, 2, 7.5 },transform) };
+
+
+const auto planeFront = new Plane({ 0,0,1 }, -1);
+const auto planeLeft = new Plane({ 0.70710678,0,0.70710678 }, 0);
+const auto planeRight = new Plane({ -0.70710678,0,0.70710678 }, 0);
+const auto planeTop = new Plane({ 0,0.70710678,0.70710678 }, 0);
+const auto planeBottom = new Plane({ 0,-0.70710678,0.70710678 }, 0);
+const std::array<Plane*, 5> planes = { planeFront, planeLeft, planeRight, planeTop, planeBottom };
 
 int frameCount = 0;
 float fps = 0.0f;
@@ -164,7 +173,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     hInst = hInstance; // 将实例句柄存储在全局变量中
 
     HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, width, height+60, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, 0, width, height + 60, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {
@@ -172,8 +181,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     }
     // Initialize global objects
     camera = new Camera({ 0,0,0 }, { 0,0,0 });
-    rayTraceRender = new RayTraceRender(nullptr,sphereList, lightList, camera);
-    rasterizationRender = new RasterizationRender(nullptr,instances, camera);
+    rayTraceRender = new RayTraceRender(nullptr, sphereList, lightList, camera);
+    rasterizationRender = new RasterizationRender(nullptr, instances, camera,planes);
     hBitmap = CreateBitmap(width, height, 1, 32, NULL);
 
     ShowWindow(hWnd, nCmdShow);
@@ -227,7 +236,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
     case WM_PAINT:
     {
-        if (camera!=nullptr &&  rayTraceRender != nullptr&& rasterizationRender!= nullptr)
+        if (camera != nullptr && rayTraceRender != nullptr && rasterizationRender != nullptr)
         {
             auto frameStart = std::chrono::high_resolution_clock::now();
             PAINTSTRUCT ps;
@@ -239,11 +248,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 hBitmap = CreateBitmap(width, height, 1, 32, NULL);
                 SelectObject(hMemDC, hBitmap);
 
-                Canvas* canvas = new Canvas( hMemDC, width, height, camera);
-				transform->SetRotateState({0,1,0}, transform->GetAngle()+0.1);
+                Canvas* canvas = new Canvas(hMemDC, width, height, camera);
+                transform->SetRotateState({ 0,1,0 }, transform->GetAngle() + 0.1);
                 //camera->Forward();
 
-				//rayTraceRender->SetCanvas(canvas);
+                //rayTraceRender->SetCanvas(canvas);
                 // rayTraceRender->RunRender();
 
                 rasterizationRender->SetCanvas(canvas);
@@ -273,7 +282,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // 将字符串转换为 std::string 并使用 OutputDebugString
             OutputDebugStringA(oss.str().c_str());
         }
-       
+
     }
     break;
     case WM_DESTROY:

@@ -2,8 +2,11 @@
 #include <algorithm>
 #include "VectorHelper.h"
 #include <unordered_map>
-RasterizationRender::RasterizationRender( Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera)
-	:instances(instances), canvas(canvas), camera(camera)
+#include "Utils.h"
+
+
+RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<ModelInstance *> &instances, const Camera *camera, const std::array<Plane *, 5> &planes)
+    : instances(instances), canvas(canvas), camera(camera), planes(planes)
 {
 }
 
@@ -214,44 +217,56 @@ std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double
 std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance, const std::array< std::array<double, 4>, 4>& matrix_camera) const
 {
 	std::vector<Pixel*> result;
-	std::unordered_map<const std::array<double, 3>*, std::array<int, 2>> projectedPoints;
+	std::unordered_map<std::string, std::array<int, 2>> projectedPoints;
 	const Model* model = instance.GetModel();
 	auto matrix_model_scale = VectorHelper::Build4DScaleMatrix(instance.GetScale());
 	auto matrix_model_rotate = VectorHelper::Build4DRotationMatrix(instance.GetAngle(), instance.GetRotate());
 	auto matrix_model_translate = VectorHelper::Build4DTranslationMatrix(instance.GetPosition());
 	auto matrix_model = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model_scale, matrix_model_rotate), matrix_model_translate);
-
-
 	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());	
-	for (auto& vertice : model->getVertices())
+	auto matrix_model_camera = VectorHelper::MatrixMultiply(matrix_model, matrix_camera);
+	
+
+
+	for (auto& vertice : instance.GetVertices())
 	{
 		auto homoVertice = VectorHelper::BuildHomogeneousPoint(vertice);
-		auto m = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model, matrix_camera),matrix_viewport);
+		auto m = VectorHelper::MatrixMultiply(matrix_model_camera,matrix_viewport);
 		auto newVertice = VectorHelper::Build2DPoint(VectorHelper::VerticeMatrixMultiply(homoVertice,m));
 
-		projectedPoints[&vertice] = canvas->ConvertPointToCanvasCoordinate(newVertice);
+		projectedPoints[Utils::ArrayToString(vertice)] = canvas->ConvertPointToCanvasCoordinate(newVertice);
 	}
-	for (const auto& triangle : model->getTriangles())
+	for (const auto& triangle : instance.GetTriangles())
 	{
-		const auto& p0 = projectedPoints[triangle.getV0Pointer()];
-		const auto& p1 = projectedPoints[triangle.getV1Pointer()];
-		const auto& p2 = projectedPoints[triangle.getV2Pointer()];
+		const auto& p0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())];
+		const auto& p1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())];
+		const auto& p2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())];
 
-		auto pixels = DrawWireFrameTriangle(p0, p1, p2, triangle.getColor());
+		auto pixels = DrawWireFrameTriangle(p0, p1, p2, triangle->GetColor());
 		result.insert(result.end(), pixels.begin(), pixels.end());
 	}
 	return result;
 }
 
-void RasterizationRender::RunRender() const
+void RasterizationRender::RunRender()
 {
 	canvas->resetCanvas();
+	std::vector<const ModelInstance*> clippedInstances;
 	std::vector<Pixel*> pixels;
-	auto matrix_camera = VectorHelper::MatrixMultiply(
+	const auto matrix_camera = VectorHelper::MatrixMultiply(
 		VectorHelper::Build4DInverseTranslationMatrix(camera->GetPosition()),
 		VectorHelper::Build4DRotateInverseMatrix(camera->GetAngle(), camera->GetDirection())
 	);
-	for (auto instance : instances)
+	for (const auto& instance : instances)
+	{
+		const auto clippedInstance = ClipInstance(instance, matrix_camera);
+		if (clippedInstance != nullptr)
+		{
+			clippedInstances.push_back(clippedInstance);
+		}
+	}
+	
+	for (const auto& instance : clippedInstances)
 	{
 		auto tmpPixels = RenderInstance(*instance, matrix_camera);
 		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
@@ -264,6 +279,73 @@ void RasterizationRender::RunRender() const
 		canvas->PutPixel( position[0], position[1], RGB(color[0], color[1], color[2]));
 		delete pixel;
 	}
+	for (const auto& instance : clippedInstances)
+	{
+		delete instance;
+	}
+	clippedInstances.clear();
+}
+
+void RasterizationRender::ClipPipeline()
+{
+}
+
+ModelInstance* RasterizationRender::ClipInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	const Model* model = instance->GetModel();
+	auto modelBoundingSphere = model->GetBoundingSphere();
+	if (modelBoundingSphere==nullptr)
+	{
+		throw std::runtime_error("Model bounding sphere is null.");
+	}
+	
+	const auto modelBoundingSphereCenterPoint = modelBoundingSphere->GetCenterPoint();
+	const auto modelRadius = modelBoundingSphere->GetRadius();
+    const auto homoCenterPoint = VectorHelper::BuildHomogeneousPoint(modelBoundingSphereCenterPoint);
+	const auto instanceBSCenterPoint = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(homoCenterPoint, matrix_model_camera)) ;
+	auto instanceBSRadius = modelRadius * instance->GetScale();
+	ModelInstance* clippedInstance = nullptr;
+	bool inScopeOfPlanes = false;
+	for (const auto& plane : planes)
+	{
+		delete clippedInstance;
+		clippedInstance = ClipInstanceAgainstPlane(instance, instanceBSCenterPoint, instanceBSRadius, plane, matrix_model_camera);
+		if (clippedInstance==nullptr)
+		{
+			return nullptr;
+		}
+	}
+	return clippedInstance;
+
+}
+
+ModelInstance* RasterizationRender::ClipInstanceAgainstPlane(const ModelInstance* instance, const std::array<double, 3>& instanceBSCenterPoint, const double instanceBSRadius, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	const double d = VectorHelper::GetSingnedVertexToPlaneDistance(instanceBSCenterPoint, plane);
+	ModelInstance* newInstance = new ModelInstance(*instance);
+	if (d > instanceBSRadius)
+	{
+		return newInstance;
+
+	} else if( d < -instanceBSRadius)
+	{
+		return nullptr;
+	}
+	else
+	{
+		return newInstance;
+	}
+
+}
+
+ModelInstance* RasterizationRender::ClipTrianglesAgainstPlane(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	return nullptr;
+}
+
+Triangle* RasterizationRender::ClipTriangleAgainstPlane(const Triangle* triangle, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	return nullptr;
 }
 
 void RasterizationRender::SetCanvas( Canvas* canvasPointer)
