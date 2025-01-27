@@ -8,6 +8,7 @@ private:
 	std::array<double, 3> position;
 	const Transform* transform;
 	std::vector<Triangle*> triangles;
+	BoundingSphere* boundingSphere = nullptr;
 public:
 	ModelInstance(const Model* model, const std::array<double, 3>& position,const Transform* transform);
 	ModelInstance(const ModelInstance& other);
@@ -23,4 +24,6 @@ public:
 	const std::vector<Triangle*>& GetTriangles() const;
 	const std::vector<std::array<double, 3>> GetVertices() const;
 	void SetTriangles(const std::vector<Triangle*>& triangles);
+	void SetBoundingSphere(const BoundingSphere* boundingSphere);
+	const BoundingSphere* GetBoundingSphere() const;
 };

@@ -11,6 +11,7 @@ public:
 	Transform();
 	Transform(const double scale, const double angle, const std::array<double, 3>& rotate, const std::array<double, 3>& translation);
 	~Transform();
+	Transform(const Transform& other);
 	const double& GetScale() const;
 	const std::array<double, 3>& GetRotate() const;
 	const std::array<double, 3>& GetTranslation() const;

@@ -13,7 +13,7 @@ private:
 public:
     Model(const std::string name, const std::vector<Triangle*>& triangles, const BoundingSphere* boundingSphere);
     ~Model();
-    const std::vector<std::array<double, 3>> GetVertices() const;
+    const std::vector< std::array<double, 3>> GetVertices() const;
 
     const std::vector<Triangle*> GetTriangles() const;
 	const std::string GetName() const;

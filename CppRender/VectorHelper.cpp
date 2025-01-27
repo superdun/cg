@@ -227,22 +227,29 @@ std::array<double, 2> VectorHelper::Build2DPoint(const std::array<double, 4>& po
     return result;
 }
 
+std::array<double, 3> VectorHelper::Build2DPointWithDepth(const std::array<double, 4>& point)
+{
+    std::array<double, 3> result = { point[0] / point[2],point[1] / point[2],point[2] };
+    return result;
+}
+
 double VectorHelper::GetSingnedVertexToPlaneDistance(const std::array<double, 3>& vertex, const Plane* plane)
 {
     const std::array<double, 3> normal = plane->GetNormal();
     const double d = plane->GetD();
     return (vertex[0] * normal[0] + vertex[1] * normal[1] + vertex[2] * normal[2] + d);
 }
-std::array<double, 3> VectorHelper::GetPlaneNormal(const std::array<double, 4>& plane)
+std::array<double, 3> VectorHelper::GetPlaneNormal(const std::array<double, 4>* planePointer)
 {
+    const auto plane = *planePointer;
     const double normalLength = sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
     return std::array<double, 3>{plane[0] / normalLength, plane[1] / normalLength, plane[2] / normalLength};
 }
 
-std::array<double, 3> VectorHelper::GetPlaneLineIntersection(const Plane& plane, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB)
+std::pair<std::array<double, 3>, double> VectorHelper::GetPlaneLineIntersection(const Plane* planePointer, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB)
 {
-    const double D = plane.GetD();
-    const auto normal = plane.GetNormal();
-    const double t = -1*D - VectorDot(normal, pointA) / VectorDot(normal, VectorSub(pointB, pointA));
-    return VectorAdd(pointA, VectorScale(VectorSub(pointB, pointA), t));
+    const double D = planePointer->GetD();
+    const auto normal = planePointer->GetNormal();
+    const double t = -1 * D - VectorDot(normal, pointA) / VectorDot(normal, VectorSub(pointB, pointA));
+    return { VectorAdd(pointA, VectorScale(VectorSub(pointB, pointA), t)), t };
 }

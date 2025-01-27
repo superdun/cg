@@ -14,6 +14,11 @@ Transform::~Transform()
 {
 }
 
+Transform::Transform(const Transform& other)
+	:scale(other.scale), rotate(other.rotate), translation(other.translation), angle(other.angle)
+{
+}
+
 const double& Transform::GetScale() const
 {
     return scale;

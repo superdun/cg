@@ -61,12 +61,12 @@ int Canvas::ConvertYToCanvasCoordinate(const double& y) const
     return canvasMaxY - y * canvasViewportHeightRate;
 }
 
-std::array<int, 2> Canvas::ConvertPointToCanvasCoordinate(const std::array<double, 2>& position) const
+std::pair<std::array<int, 2>, double> Canvas::ConvertPointToCanvasCoordinateWithDepth(const std::array<double, 3>& positionWithDepth) const
 {
     std::array<int, 2> screenPosition;
-    screenPosition[0] = position[0]+ canvasMaxX;
-    screenPosition[1] = canvasMaxY - position[1];
-    return screenPosition;
+    screenPosition[0] = positionWithDepth[0]+ canvasMaxX;
+    screenPosition[1] = canvasMaxY - positionWithDepth[1];
+    return std::make_pair(screenPosition, positionWithDepth[2]);
 }
 
 

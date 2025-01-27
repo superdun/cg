@@ -17,6 +17,11 @@ BoundingSphere::BoundingSphere(const std::array<double, 3>& center, double r)
 {
 }
 
+BoundingSphere::BoundingSphere(const BoundingSphere& other)
+	:centerPoint(other.centerPoint),radius(other.radius)
+{
+}
+
 const std::array<double, 3>& BoundingSphere::GetCenterPoint() const
 {
 	return centerPoint;

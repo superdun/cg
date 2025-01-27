@@ -55,24 +55,25 @@ const std::vector< std::array<double, 3>> vertexes = {
 };
 
 const std::vector<Triangle*> triangles = {
-    new Triangle(&vertexes[0], &vertexes[1], &vertexes[2], {255, 0, 0}),
-    new Triangle(&vertexes[0], &vertexes[2], &vertexes[3], {255, 0, 0}),
-    new Triangle(&vertexes[4], &vertexes[0], &vertexes[3], {0, 255, 0}),
-    new Triangle(&vertexes[4], &vertexes[3], &vertexes[7], {0, 255, 0}),
-    new Triangle(&vertexes[5], &vertexes[4], &vertexes[7], {0, 0, 255}),
-    new Triangle(&vertexes[5], &vertexes[7], &vertexes[6], {0, 0, 255}),
-    new Triangle(&vertexes[1], &vertexes[5], &vertexes[6], {255, 255, 0}),
-    new Triangle(&vertexes[1], &vertexes[6], &vertexes[2], {255, 255, 0}),
-    new Triangle(&vertexes[4], &vertexes[5], &vertexes[1], {255, 0, 255}),
-    new Triangle(&vertexes[4], &vertexes[1], &vertexes[0], {255, 0, 255}),
-    new Triangle(&vertexes[2], &vertexes[6], &vertexes[7], {0, 255, 255}),
-    new Triangle(&vertexes[2], &vertexes[7], &vertexes[3], {0, 255, 255})
+    new Triangle(vertexes[0], vertexes[1], vertexes[2], {255, 0, 0}),
+    new Triangle(vertexes[0], vertexes[2], vertexes[3], {255, 0, 0}),
+    new Triangle(vertexes[4], vertexes[0], vertexes[3], {0, 255, 0}),
+    new Triangle(vertexes[4], vertexes[3], vertexes[7], {0, 255, 0}),
+    new Triangle(vertexes[5], vertexes[4], vertexes[7], {0, 0, 255}),
+    new Triangle(vertexes[5], vertexes[7], vertexes[6], {0, 0, 255}),
+    new Triangle(vertexes[1], vertexes[5], vertexes[6], {255, 255, 0}),
+    new Triangle(vertexes[1], vertexes[6], vertexes[2], {255, 255, 0}),
+    new Triangle(vertexes[4], vertexes[5], vertexes[1], {255, 0, 255}),
+    new Triangle(vertexes[4], vertexes[1], vertexes[0], {255, 0, 255}),
+    new Triangle(vertexes[2], vertexes[6], vertexes[7], {0, 255, 255}),
+    new Triangle(vertexes[2], vertexes[7], vertexes[3], {0, 255, 255})
 };
 
-Transform* transform = new Transform();
+Transform* transform1 = new Transform();
+Transform* transform2 = new Transform();
 const auto boundingSphere = new BoundingSphere({0,0,0}, 2*sqrt(3));
 const Model object("cube", triangles,boundingSphere);
-const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform),new ModelInstance(&object, { 1.25, 2, 7.5 },transform) };
+const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform1),new ModelInstance(&object, { 1.25, 2, 7.5 },transform2) };
 
 
 const auto planeFront = new Plane({ 0,0,1 }, -1);
@@ -249,7 +250,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SelectObject(hMemDC, hBitmap);
 
                 Canvas* canvas = new Canvas(hMemDC, width, height, camera);
-                transform->SetRotateState({ 0,1,0 }, transform->GetAngle() + 0.1);
+                transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
+                transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
                 //camera->Forward();
 
                 //rayTraceRender->SetCanvas(canvas);

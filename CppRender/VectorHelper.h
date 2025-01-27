@@ -32,9 +32,10 @@ public:
     static std::array<double, 4> BuildHomogeneousPoint(const std::array<double, 3>& point);
     static std::array<double, 3> Build3DPoint(const std::array<double, 4>& point);
     static std::array<double, 2> Build2DPoint(const std::array<double, 4>& point);
-    static double GetSingnedVertexToPlaneDistance(const std::array<double, 3>& vertex, const Plane* plane);
-    static std::array<double, 3> GetPlaneNormal(const std::array<double, 4>& plane);
-    static std::array<double, 3> GetPlaneLineIntersection(const Plane& plane, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB);
+    static std::array<double, 3> Build2DPointWithDepth(const std::array<double, 4>& point);
+    static double GetSingnedVertexToPlaneDistance(const std::array<double, 3>& vertex, const Plane* planePointer);
+    static std::array<double, 3> GetPlaneNormal(const std::array<double, 4>* planePointer);
+    static std::pair<std::array<double, 3>, double> GetPlaneLineIntersection(const Plane* plane, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB);
 };
 
 #endif // VECTORHELPER_H

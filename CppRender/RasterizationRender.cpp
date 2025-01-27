@@ -8,11 +8,27 @@
 RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<ModelInstance *> &instances, const Camera *camera, const std::array<Plane *, 5> &planes)
     : instances(instances), canvas(canvas), camera(camera), planes(planes)
 {
+	InitDepthBuffer();
 }
 
 
 RasterizationRender::~RasterizationRender()
 {
+}
+
+void RasterizationRender::InitDepthBuffer()
+{
+	if (canvas != nullptr)
+	{
+		depthBuffer = std::vector<std::vector<double>>(canvas->getCanvasWidth()+1, std::vector<double>(canvas->getCanvasHeight()+1, 0));
+		for (int i = 0; i < canvas->getCanvasWidth(); i++)
+		{
+			for (int j = 0; j < canvas->getCanvasHeight(); j++)
+			{
+				depthBuffer[i][j] = DBL_MAX;
+			}
+		}
+	}
 }
 
 std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1, double d1) const
@@ -33,10 +49,10 @@ std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1,
 	return result;
 }
  
-std::vector<Pixel*> RasterizationRender::DrawLine(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 3> color) const
+std::vector<Pixel*> RasterizationRender::DrawLine(const std::array<int, 2> p0, const std::array<int, 2> p1,const double p0_depth, const double p1_depth, const std::array<int, 3> color) const
 {
-	std::array<int, 2> p0_new = p0;
-	std::array<int, 2> p1_new = p1;
+	std::array<int, 3> p0_new = { p0[0],p0[1],0 };
+	std::array<int, 3> p1_new = { p1[0],p1[1],0 };
 	std::vector<Pixel*> result;
 	const bool steep = abs(p0_new[1] - p1_new[1]) > abs(p0_new[0] - p1_new[0]);
 	if (steep)
@@ -49,7 +65,7 @@ std::vector<Pixel*> RasterizationRender::DrawLine(const std::array<int, 2> p0, c
 		auto xList = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 		for (int p = p0_new[1]; p <= p1_new[1]; p++)
 		{
-			result.push_back(new Pixel(xList[p - p0_new[1]], p, color));
+			result.push_back(new Pixel(xList[p - p0_new[1]], p, color, p0_new[2]));
 		}
 		
 	}
@@ -61,21 +77,21 @@ std::vector<Pixel*> RasterizationRender::DrawLine(const std::array<int, 2> p0, c
 		auto yList = Interpolate(p0_new[0], p0_new[1], p1_new[0], p1_new[1]);
 		for (int p = p0_new[0]; p <= p1_new[0]; p++)
 		{
-			result.push_back(new Pixel(p, yList[p - p0_new[0]], color));
+			result.push_back(new Pixel(p, yList[p - p0_new[0]], color, p0_new[2]));
 		}
 	}
 
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3>& color) const
+std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double p0_depth, const double p1_depth, const double p2_depth, const std::array<int, 3>& color) const
 {
 
 
 	std::vector<Pixel*> result;
-	auto line1 = DrawLine(p0, p1, color);
-	auto line2 = DrawLine(p1, p2, color);
-	auto line3 = DrawLine(p0, p2, color);
+	auto line1 = DrawLine(p0, p1, p0_depth, p1_depth, color);
+	auto line2 = DrawLine(p1, p2, p1_depth, p2_depth, color);
+	auto line3 = DrawLine(p0, p2, p0_depth, p2_depth, color);
 	// Insert the resulting pixels from each line into the result vector
 	result.insert(result.end(), line1.begin(), line1.end());
 	result.insert(result.end(), line2.begin(), line2.end());
@@ -83,50 +99,66 @@ std::vector<Pixel*> RasterizationRender::DrawWireFrameTriangle(const std::array<
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const std::array<int, 3>& color) const
+std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const double p0_depth, const double p1_depth, const double p2_depth, const std::array<int, 3>& color) const
 {
 	std::vector<Pixel*> result;
 	std::array<int, 2> p0_new = p0;
 	std::array<int, 2> p1_new = p1;
 	std::array<int, 2> p2_new = p2;
+	double p0_depth_new = p0_depth;	
+	double p1_depth_new = p1_depth;
+	double p2_depth_new = p2_depth;
 	if (p0_new[1]>p1_new[1])
 	{
 		std::swap(p0_new, p1_new);
+		std::swap(p0_depth_new, p1_depth_new);
 	}
 	if (p0_new[1] > p2_new[1])
 	{
 		std::swap(p0_new, p2_new);
+		std::swap(p0_depth_new, p2_depth_new);
 	}
 	if (p1_new[1] > p2_new[1])
 	{
 		std::swap(p1_new, p2_new);
+		std::swap(p1_depth_new, p2_depth_new);
 	}
 	auto xListLow = Interpolate(p0_new[1], p0_new[0], p2_new[1], p2_new[0]);
 	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
 	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 	
-	
+	auto depthListLow = Interpolate(p0_new[1], p0_depth_new, p2_new[1], p2_depth_new);
+	auto depthListHigher = Interpolate(p1_new[1], p1_depth_new, p2_new[1], p2_depth_new);
+	auto depthListHighest = Interpolate(p0_new[1], p0_depth_new, p1_new[1], p1_depth_new);
+
 	for (int y = p0_new[1]; y <= p2_new[1]; y++)
 	{
 		auto xLow = xListLow[y - p0_new[1]];
+		auto depthOnEdge1 = depthListLow[y - p0_new[1]];
 		std::array<int, 2> pOnEdge1 = { xLow,y };
+		double depthOnEdge2;
 		std::array<int, 2> pOnEdge2;
+
 		if (y< p1_new[1])
 		{	
-			
+			depthOnEdge2 = depthListHighest[y - p0_new[1]];
 			pOnEdge2 = { (int)xListHighest[y- p0_new[1]],y};
 
 		}
 		else {
+			depthOnEdge2 = depthListHigher[y - p1_new[1]];
 			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
 		}
 		if (pOnEdge1[0]> pOnEdge2[0])
 		{
 			std::swap(pOnEdge1, pOnEdge2);
+			std::swap(depthOnEdge1, depthOnEdge2);
 		}
+		auto depthListHorizontal = Interpolate(pOnEdge1[0], depthOnEdge1, pOnEdge2[0], depthOnEdge2);
 		for (int x = pOnEdge1[0]; x <= pOnEdge2[0]; x++)
 		{
-			result.push_back(new Pixel(x,y,color));
+			auto depth = depthListHorizontal[x - pOnEdge1[0]];
+			result.push_back(new Pixel(x,y,color,depth));
 		}
 
 	}
@@ -135,67 +167,83 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double h0, const double h1, const double h2,  const std::array<int, 3>& color) const
+std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double p0_depth, const double p1_depth, const double p2_depth, const double h0, const double h1, const double h2,  const std::array<int, 3>& color) const
 {
 	std::vector<Pixel*> result;
 	std::array<int, 2> p0_new = p0;
 	std::array<int, 2> p1_new = p1;
 	std::array<int, 2> p2_new = p2;
+	double p0_depth_new = p0_depth;
+	double p1_depth_new = p1_depth;
+	double p2_depth_new = p2_depth;
 	double h0_new = h0;
 	double h1_new = h1;
 	double h2_new = h2;
+
 	if (p0_new[1] > p1_new[1])
 	{
 		std::swap(p0_new, p1_new);
 		std::swap(h0_new, h1_new);
+		std::swap(p0_depth_new, p1_depth_new);
 	}
 	if (p0_new[1] > p2_new[1])
 	{
 		std::swap(p0_new, p2_new);
 		std::swap(h0_new, h2_new);
+		std::swap(p0_depth_new, p2_depth_new);
 	}
 	if (p1_new[1] > p2_new[1])
 	{
 		std::swap(p1_new, p2_new);
 		std::swap(h1_new, h2_new);
+		std::swap(p1_depth_new, p2_depth_new);
 	}
 	auto xListLow = Interpolate(p0_new[1], p0_new[0], p2_new[1], p2_new[0]);
 	auto hListLow = Interpolate(p0_new[1], h0_new, p2_new[1], h2_new);
+	auto depthListLow = Interpolate(p0_new[1], p0_depth_new, p2_new[1], p2_depth_new);
 
 	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
 	auto hListHigher = Interpolate(p1_new[1], h1_new, p2_new[1], h2_new);
+	auto depthListHigher = Interpolate(p1_new[1], p1_depth_new, p2_new[1], p2_depth_new);
 
 	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 	auto hListHighest = Interpolate(p0_new[1], h0_new, p1_new[1], h1_new);
+	auto depthListHighest = Interpolate(p0_new[1], p0_depth_new, p1_new[1], p1_depth_new);
 
 	for (int y = p0_new[1]; y <= p2_new[1]; y++)
 	{
 		auto xOnEdge1 = xListLow[y - p0_new[1]];
 		auto hOnEdge1 = hListLow[y - p0_new[1]];
-		double  hOnEdge2;
+		auto depthOnEdge1 = depthListLow[y - p0_new[1]];
+		double hOnEdge2;
+		double depthOnEdge2;
 		std::array<int, 2> pOnEdge1 = { xOnEdge1,y };
 		std::array<int, 2> pOnEdge2;
 		if (y < p1_new[1])
 		{
 			hOnEdge2 = hListHighest[y - p0_new[1]];
 			pOnEdge2 = { (int)xListHighest[y - p0_new[1]],y };
-
+			depthOnEdge2 = depthListHighest[y - p0_new[1]];
 		}
 		else {
 			hOnEdge2 = hListHigher[y - p1_new[1]];
 			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
+			depthOnEdge2 = depthListHigher[y - p1_new[1]];
 		}
 		if (pOnEdge1[0] > pOnEdge2[0])
 		{
 			std::swap(pOnEdge1, pOnEdge2);
 			std::swap(hOnEdge1, hOnEdge2);
+			std::swap(depthOnEdge1, depthOnEdge2);
 		}
 		auto hListHorizontal = Interpolate(pOnEdge1[0], hOnEdge1, pOnEdge2[0], hOnEdge2);
+		auto depthListHorizontal = Interpolate(pOnEdge1[0], depthOnEdge1, pOnEdge2[0], depthOnEdge2);
 		for (int x = pOnEdge1[0]; x <= pOnEdge2[0]; x++)
 		{
 			auto h = hListHorizontal[x - pOnEdge1[0]];
+			auto depth = depthListHorizontal[x - pOnEdge1[0]];
 			auto newColor = VectorHelper::ColorVectorScale(color, h);
-			result.push_back(new Pixel(x, y, newColor));
+			result.push_back(new Pixel(x, y, newColor, depth));
 		}
 
 	}
@@ -217,35 +265,48 @@ std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double
 std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance, const std::array< std::array<double, 4>, 4>& matrix_camera) const
 {
 	std::vector<Pixel*> result;
-	std::unordered_map<std::string, std::array<int, 2>> projectedPoints;
-	const Model* model = instance.GetModel();
-	auto matrix_model_scale = VectorHelper::Build4DScaleMatrix(instance.GetScale());
-	auto matrix_model_rotate = VectorHelper::Build4DRotationMatrix(instance.GetAngle(), instance.GetRotate());
-	auto matrix_model_translate = VectorHelper::Build4DTranslationMatrix(instance.GetPosition());
-	auto matrix_model = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model_scale, matrix_model_rotate), matrix_model_translate);
+	std::unordered_map<std::string,  std::pair<std::array<int, 2>, double>> projectedPoints;
 	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());	
-	auto matrix_model_camera = VectorHelper::MatrixMultiply(matrix_model, matrix_camera);
 	
 
 
 	for (auto& vertice : instance.GetVertices())
 	{
 		auto homoVertice = VectorHelper::BuildHomogeneousPoint(vertice);
-		auto m = VectorHelper::MatrixMultiply(matrix_model_camera,matrix_viewport);
-		auto newVertice = VectorHelper::Build2DPoint(VectorHelper::VerticeMatrixMultiply(homoVertice,m));
+		auto new2DVerticeWithDepth = VectorHelper::Build2DPointWithDepth(VectorHelper::VerticeMatrixMultiply(homoVertice,matrix_viewport));
 
-		projectedPoints[Utils::ArrayToString(vertice)] = canvas->ConvertPointToCanvasCoordinate(newVertice);
+		projectedPoints[Utils::ArrayToString(vertice)] = canvas->ConvertPointToCanvasCoordinateWithDepth(new2DVerticeWithDepth);
 	}
 	for (const auto& triangle : instance.GetTriangles())
 	{
-		const auto& p0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())];
-		const auto& p1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())];
-		const auto& p2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())];
+		const auto& p0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].first;
+		const auto& p1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].first;
+		const auto& p2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].first;
+		const auto& depth0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].second;
+		const auto& depth1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].second;
+		const auto& depth2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].second;
 
-		auto pixels = DrawWireFrameTriangle(p0, p1, p2, triangle->GetColor());
-		result.insert(result.end(), pixels.begin(), pixels.end());
+		auto pixels = DrawFilledTriangle(p0, p1, p2, depth0, depth1, depth2, triangle->GetColor());
+		for(auto pixel : pixels)
+		{
+			if (pixel->GetPosition()[0] >= 0 && pixel->GetPosition()[0] <= canvas->getCanvasWidth() && pixel->GetPosition()[1] >= 0 && pixel->GetPosition()[1] <= canvas->getCanvasHeight())
+			{
+				result.push_back(pixel);
+			}
+			else
+			{
+				delete pixel;
+			}
+		}
+
 	}
 	return result;
+}
+
+void RasterizationRender::SetCanvas( Canvas* canvasPointer)
+{
+	canvas = canvasPointer;
+	InitDepthBuffer();
 }
 
 void RasterizationRender::RunRender()
@@ -257,6 +318,7 @@ void RasterizationRender::RunRender()
 		VectorHelper::Build4DInverseTranslationMatrix(camera->GetPosition()),
 		VectorHelper::Build4DRotateInverseMatrix(camera->GetAngle(), camera->GetDirection())
 	);
+	
 	for (const auto& instance : instances)
 	{
 		const auto clippedInstance = ClipInstance(instance, matrix_camera);
@@ -276,7 +338,10 @@ void RasterizationRender::RunRender()
 	{
 		const auto& position = pixel->GetPosition();
 		const auto& color = pixel->GetColor();
-		canvas->PutPixel( position[0], position[1], RGB(color[0], color[1], color[2]));
+		if (CompareAndSetDepthBuffer(position, pixel->GetDepth()))
+		{
+			canvas->PutPixel( position[0], position[1], RGB(color[0], color[1], color[2]));
+		}
 		delete pixel;
 	}
 	for (const auto& instance : clippedInstances)
@@ -290,7 +355,143 @@ void RasterizationRender::ClipPipeline()
 {
 }
 
-ModelInstance* RasterizationRender::ClipInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+ModelInstance* RasterizationRender::ClipInstance( ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_camera)
+{
+	const Model* model = instance->GetModel();
+	auto matrix_model_scale = VectorHelper::Build4DScaleMatrix(instance->GetScale());
+	auto matrix_model_rotate = VectorHelper::Build4DRotationMatrix(instance->GetAngle(), instance->GetRotate());
+	auto matrix_model_translate = VectorHelper::Build4DTranslationMatrix(instance->GetPosition());
+	auto matrix_model = VectorHelper::MatrixMultiply(VectorHelper::MatrixMultiply(matrix_model_scale, matrix_model_rotate), matrix_model_translate);
+	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());	
+	auto matrix_model_camera = VectorHelper::MatrixMultiply(matrix_model, matrix_camera);
+
+	ModelInstance* newInstance = CreateNewInstance(instance, matrix_model_camera);
+
+
+	ModelInstance* clippedInstance = nullptr;
+	for (const auto& plane : planes)
+	{
+		clippedInstance = ClipInstanceAgainstPlane(newInstance, plane, matrix_model_camera);
+		if (clippedInstance==nullptr)
+		{
+			return nullptr;
+		}
+	}
+	return newInstance;
+
+}
+
+ModelInstance* RasterizationRender::ClipInstanceAgainstPlane( ModelInstance* instance,  const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+ 
+	const auto instanceBSCenterPoint = instance->GetBoundingSphere()->GetCenterPoint();
+	const auto instanceBSRadius = instance->GetBoundingSphere()->GetRadius();
+	const double d = VectorHelper::GetSingnedVertexToPlaneDistance(instanceBSCenterPoint, plane);
+
+	if (d > instanceBSRadius)
+	{
+		return instance;
+
+	} else if( d < -instanceBSRadius)
+	{
+		
+		return nullptr;
+	}
+	else
+	{
+		auto clippedTriangles = ClipTrianglesAgainstPlane(instance, plane, matrix_model_camera);
+		instance->SetTriangles(clippedTriangles);
+		for (auto triangle : clippedTriangles)
+		{
+			delete triangle;
+		}
+		return instance;
+	}
+
+}
+
+std::vector<Triangle*> RasterizationRender::ClipTrianglesAgainstPlane(const ModelInstance* instance, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	const auto triangles = instance->GetTriangles();
+	std::vector<Triangle*> clippedTriangles;
+	for (const auto& triangle : triangles)
+	{
+		const auto clippedTrianglesResult = ClipTriangleAgainstPlane(triangle, plane, matrix_model_camera);
+		for (auto clippedTriangle : clippedTrianglesResult)
+		{
+			clippedTriangles.push_back(clippedTriangle);
+		}
+	}
+	return clippedTriangles;
+}
+
+std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Triangle* triangle, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{
+	const double d0 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV0(), plane);
+	const double d1 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV1(), plane);
+	const double d2 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV2(), plane);
+	if (d0 >=0 && d1 >= 0 && d2 >= 0)
+	{
+		return { new Triangle(*triangle) };
+	} 
+	else if (d0 < 0 && d1 < 0 && d2 < 0)
+	{
+		return {};
+	}
+
+	else if (d0 > 0 && d1 < 0 && d2 < 0)
+	{
+		auto pointNewBAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV1());
+		auto pointNewCAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV2());
+		auto h0 = triangle->GetH0();
+		auto newHB = h0 + pointNewBAndT.second*(triangle->GetH1() - h0);
+		auto newHC = h0 + pointNewCAndT.second*(triangle->GetH2() - h0);
+		return { new Triangle(triangle->GetV0(), pointNewBAndT.first, pointNewCAndT.first, triangle->GetColor(), h0, newHB, newHC)};
+	} else if (d0 < 0 && d1 > 0 && d2 < 0){
+		auto pointNewAAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV2());
+		auto pointNewCAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV0());
+		auto h1 = triangle->GetH1();
+		auto newHA = h1 + pointNewAAndT.second*(triangle->GetH2() - h1);
+		auto newHC = h1 + pointNewCAndT.second*(triangle->GetH0() - h1);
+		
+		return { new Triangle(pointNewAAndT.first, triangle->GetV1(), pointNewCAndT.first, triangle->GetColor(), newHA, h1, newHC)};
+	} else if (d0 < 0 && d1 < 0 && d2 > 0){
+		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV0());
+		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV1());
+		auto h2 = triangle->GetH2();
+		auto newHA = h2 + pointNewA.second*(triangle->GetH0() - h2);
+		auto newHB = h2 + pointNewB.second*(triangle->GetH1() - h2);
+		return { new Triangle(pointNewA.first, pointNewB.first, triangle->GetV2(), triangle->GetColor(), newHA, newHB, h2)};
+	} else if (d0 < 0 && d1 > 0 && d2 > 0){
+		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV0());
+		auto pointNewC = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV0());
+		auto h1 = triangle->GetH1();
+		auto h2 = triangle->GetH2();
+		auto newHB = h1 + pointNewB.second*(triangle->GetH0() - h1);
+		auto newHC = h2 + pointNewC.second*(triangle->GetH0() - h2);
+		return { new Triangle(triangle->GetV1(), pointNewB.first, pointNewC.first, triangle->GetColor(), h1, newHB, newHC), new Triangle(triangle->GetV1(), triangle->GetV2(), pointNewC.first, triangle->GetColor(), h1, h2, newHC)};
+	} else if (d0 > 0 && d1 < 0 && d2 > 0){
+		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV1());
+		auto pointNewC = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV1());
+		auto h0 = triangle->GetH0();
+		auto h2 = triangle->GetH2();
+		auto newHA = h0 + pointNewA.second*(triangle->GetH1() - h0);
+		auto newHC = h2 + pointNewC.second*(triangle->GetH1() - h2);
+		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewC.first, triangle->GetColor(), h0, newHA, newHC), new Triangle(triangle->GetV2(), triangle->GetV0(), pointNewC.first, triangle->GetColor(), h2, h0, newHC)};
+	} else if (d0 > 0 && d1 > 0 && d2 < 0){
+		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV2());
+		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV2());
+		auto h0 = triangle->GetH0();
+		auto h1 = triangle->GetH1();
+		auto newHA = h0 + pointNewA.second*(triangle->GetH1() - h0);
+		auto newHB = h1 + pointNewB.second*(triangle->GetH1() - h1);
+		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewB.first, triangle->GetColor(), h0, newHA, newHB), new Triangle(triangle->GetV1(), triangle->GetV0(), pointNewB.first, triangle->GetColor(), h1, h0, newHB)};
+	}
+	throw std::runtime_error("Triangle can not be clipped.");
+}
+
+
+ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
 {
 	const Model* model = instance->GetModel();
 	auto modelBoundingSphere = model->GetBoundingSphere();
@@ -304,56 +505,43 @@ ModelInstance* RasterizationRender::ClipInstance(const ModelInstance* instance, 
     const auto homoCenterPoint = VectorHelper::BuildHomogeneousPoint(modelBoundingSphereCenterPoint);
 	const auto instanceBSCenterPoint = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(homoCenterPoint, matrix_model_camera)) ;
 	auto instanceBSRadius = modelRadius * instance->GetScale();
-	ModelInstance* clippedInstance = nullptr;
-	bool inScopeOfPlanes = false;
-	for (const auto& plane : planes)
-	{
-		delete clippedInstance;
-		clippedInstance = ClipInstanceAgainstPlane(instance, instanceBSCenterPoint, instanceBSRadius, plane, matrix_model_camera);
-		if (clippedInstance==nullptr)
-		{
-			return nullptr;
-		}
-	}
-	return clippedInstance;
-
-}
-
-ModelInstance* RasterizationRender::ClipInstanceAgainstPlane(const ModelInstance* instance, const std::array<double, 3>& instanceBSCenterPoint, const double instanceBSRadius, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
-{
-	const double d = VectorHelper::GetSingnedVertexToPlaneDistance(instanceBSCenterPoint, plane);
 	ModelInstance* newInstance = new ModelInstance(*instance);
-	if (d > instanceBSRadius)
-	{
-		return newInstance;
-
-	} else if( d < -instanceBSRadius)
-	{
-		return nullptr;
+	BoundingSphere* newBoundingSphere = new BoundingSphere(instanceBSCenterPoint, instanceBSRadius);
+	newInstance->SetBoundingSphere(newBoundingSphere);	
+	delete newBoundingSphere;
+	const auto triangles = newInstance->GetTriangles();
+	const auto vertices = instance->GetVertices();
+	std::unordered_map<std::string, std::array<double, 3>> calculatedPoints;
+	for (auto& vertex : vertices){
+		const auto homoVertex = VectorHelper::BuildHomogeneousPoint(vertex);
+		const auto newVertex = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(homoVertex, matrix_model_camera));
+		calculatedPoints[Utils::ArrayToString(vertex)] = newVertex;
 	}
-	else
-	{
-		return newInstance;
+	std::vector<Triangle*> newTriangles;
+	for (auto& triangle : triangles){
+		const auto v0 = calculatedPoints[Utils::ArrayToString(triangle->GetV0())];
+		const auto v1 = calculatedPoints[Utils::ArrayToString(triangle->GetV1())];
+		const auto v2 = calculatedPoints[Utils::ArrayToString(triangle->GetV2())];
+		const auto newTriangle = new Triangle(v0, v1, v2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
+		newTriangles.push_back(newTriangle);
 	}
-
+	newInstance->SetTriangles(newTriangles);
+	for (auto& triangle : newTriangles){
+		delete triangle;
+	}
+	return newInstance;
 }
 
-ModelInstance* RasterizationRender::ClipTrianglesAgainstPlane(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+
+bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth)
 {
-	return nullptr;
+	if (depthBuffer[point[0]][point[1]] > depth)
+	{
+		depthBuffer[point[0]][point[1]] = depth;
+		return true;
+	}
+	return false;
 }
-
-Triangle* RasterizationRender::ClipTriangleAgainstPlane(const Triangle* triangle, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
-{
-	return nullptr;
-}
-
-void RasterizationRender::SetCanvas( Canvas* canvasPointer)
-{
-	canvas = canvasPointer;
-}
-
-
 
 
 
