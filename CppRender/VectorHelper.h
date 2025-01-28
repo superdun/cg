@@ -41,6 +41,7 @@ public:
     static std::array<double, 3> GetNormalWithoutNormalize(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3);
     static double GetAngleBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2);
     static double GetCosBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2);
+    static std::array<double, 3> GetCentroid(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3);
 };
 
 #endif // VECTORHELPER_H

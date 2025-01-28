@@ -43,7 +43,7 @@ void RasterizationRender::ClearDepthBuffer()
 
 double RasterizationRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
 {
-	const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub(camera->GetPosition(), surfacePoint);
+	const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub({0,0,0}, surfacePoint);
     double lightIntensityScale = 0;
 	
     for (size_t i = 0; i < lightList.size(); i++)
@@ -92,7 +92,9 @@ double RasterizationRender::DiffuseReflectionScale(const std::array<double, 3>& 
 double RasterizationRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const
 {
 	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
-	return  std::max(0.0, std::pow(VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)),specular));
+	const auto cos = VectorHelper::GetCosBetweenVectors(reflectRay, surfaceToCameraRay);
+	auto a = std::pow(cos, specular);
+	return  std::max(0.0, a);
 }
 std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1, double d1) const
 {
@@ -325,56 +327,7 @@ std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double
 
 }
 
-std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance, const std::array< std::array<double, 4>, 4>& matrix_camera) const
-{
-	std::vector<Pixel*> result;
-	std::unordered_map<std::string,  std::pair<std::array<int, 2>, double>> projectedPoints;
-	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());	
-	
 
-
-	for (auto& vertice : instance.GetVertices())
-	{
-		auto homoVertice = VectorHelper::BuildHomogeneousPoint(vertice);
-		auto new2DVerticeWithDepth = VectorHelper::Build2DPointWithDepth(VectorHelper::VerticeMatrixMultiply(homoVertice,matrix_viewport));
-
-		projectedPoints[Utils::ArrayToString(vertice)] = canvas->ConvertPointToCanvasCoordinateWithDepth(new2DVerticeWithDepth);
-	}
-	for (const auto& triangle : instance.GetTriangles())
-	{
-		const auto& p0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].first;
-		const auto& p1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].first;
-		const auto& p2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].first;
-		const auto& depth0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].second;
-		const auto& depth1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].second;
-		const auto& depth2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].second;
-
-		const auto h0 = triangle->GetH0();	
-		const auto h1 = triangle->GetH1();
-		const auto h2 = triangle->GetH2();
-
-		auto pixels = DrawShadedTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor());
-		for(auto pixel : pixels)
-		{
-			if (pixel->GetPosition()[0] >= 0 && pixel->GetPosition()[0] <= canvas->getCanvasWidth() && pixel->GetPosition()[1] >= 0 && pixel->GetPosition()[1] <= canvas->getCanvasHeight())
-			{
-				result.push_back(pixel);
-			}
-			else
-			{
-				delete pixel;
-			}
-		}
-
-	}
-	return result;
-}
-
-void RasterizationRender::SetCanvas( Canvas* canvasPointer)
-{
-	canvas = canvasPointer;
-	InitDepthBuffer();
-}
 
 void RasterizationRender::RunRender()
 {
@@ -433,8 +386,55 @@ void RasterizationRender::RunRender()
 	lightList.clear();
 }
 
-void RasterizationRender::ClipPipeline()
+std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& instance, const std::array< std::array<double, 4>, 4>& matrix_camera) const
 {
+	std::vector<Pixel*> result;
+	std::unordered_map<std::string, std::pair<std::array<int, 2>, double>> projectedPoints;
+	auto matrix_viewport = VectorHelper::Build4DProjectionViewportToCanvasMatrix(canvas->getViewportDistance(), canvas->getCanvasWidth(), canvas->getCanvasHeight(), canvas->getViewportWidth(), canvas->getViewportHeight());
+
+
+
+	for (auto& vertice : instance.GetVertices())
+	{
+		auto homoVertice = VectorHelper::BuildHomogeneousPoint(vertice);
+		auto new2DVerticeWithDepth = VectorHelper::Build2DPointWithDepth(VectorHelper::VerticeMatrixMultiply(homoVertice, matrix_viewport));
+
+		projectedPoints[Utils::ArrayToString(vertice)] = canvas->ConvertPointToCanvasCoordinateWithDepth(new2DVerticeWithDepth);
+	}
+	for (const auto& triangle : instance.GetTriangles())
+	{
+		const auto& p0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].first;
+		const auto& p1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].first;
+		const auto& p2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].first;
+		const auto& depth0 = projectedPoints[Utils::ArrayToString(triangle->GetV0())].second;
+		const auto& depth1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].second;
+		const auto& depth2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].second;
+
+		const auto h0 = triangle->GetH0();
+		const auto h1 = triangle->GetH1();
+		const auto h2 = triangle->GetH2();
+
+		auto pixels = DrawShadedTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor());
+		for (auto pixel : pixels)
+		{
+			if (pixel->GetPosition()[0] >= 0 && pixel->GetPosition()[0] <= canvas->getCanvasWidth() && pixel->GetPosition()[1] >= 0 && pixel->GetPosition()[1] <= canvas->getCanvasHeight())
+			{
+				result.push_back(pixel);
+			}
+			else
+			{
+				delete pixel;
+			}
+		}
+
+	}
+	return result;
+}
+
+void RasterizationRender::SetCanvas(Canvas* canvasPointer)
+{
+	canvas = canvasPointer;
+	InitDepthBuffer();
 }
 
 ModelInstance* RasterizationRender::ClipInstance( ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_camera)
@@ -496,7 +496,8 @@ bool RasterizationRender::IsBackTriangle(const Triangle* triangle, const std::ar
 {	
 	const auto normal = triangle->GetNormal();
 	const auto cameraPosition = camera->GetPosition();
-	const auto cameraDirectionVector = VectorHelper::VectorSub(cameraPosition, triangle->GetV0());
+	const auto centroid = VectorHelper::GetCentroid(triangle->GetV0(), triangle->GetV1(), triangle->GetV2());
+	const auto cameraDirectionVector = VectorHelper::VectorSub({0,0,0}, centroid);
 	const auto cos = VectorHelper::GetCosBetweenVectors(normal, cameraDirectionVector);
 	if (cos > 0)
 	{
@@ -627,11 +628,11 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 			continue;
 		}
 		//Gouraud Shading
-		const auto normal = triangle->GetNormal();
+		const auto normal = newTriangle->GetNormal();
 		const auto cameraPosition = camera->GetPosition();
-		const auto h0 = GetLighteningScale(triangle->GetV0(), normal, 500);
-		const auto h1 = GetLighteningScale(triangle->GetV1(), normal, 500);
-		const auto h2 = GetLighteningScale(triangle->GetV2(), normal, 500);
+		const auto h0 = GetLighteningScale(newTriangle->GetV0(), normal, 50);
+		const auto h1 = GetLighteningScale(newTriangle->GetV1(), normal, 50);
+		const auto h2 = GetLighteningScale(newTriangle->GetV2(), normal, 50);
 		newTriangle->SetH0(h0);
 		newTriangle->SetH1(h1);
 		newTriangle->SetH2(h2);

@@ -279,4 +279,8 @@ double VectorHelper::GetCosBetweenVectors(const std::array<double, 3>& v1, const
     return VectorDot(v1, v2) / (VectorLength(v1) * VectorLength(v2));
 }
 
+std::array<double, 3> VectorHelper::GetCentroid(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3)
+{
+    return VectorScale(VectorAdd(VectorAdd(p1, p2), p3), 1.0 / 3.0);
+}
 

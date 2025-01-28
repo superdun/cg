@@ -83,8 +83,8 @@ const std::vector<const Light*> lightList = {
 
 const std::vector<const Light*> lightList2 = {
      new Light(LightTypeEnum::AmbientLight,{0,0,0},{0,0,0},0.2),
-     new Light(LightTypeEnum::PointLight,{-3,2,-10},{0,0,0},0.6),
      new Light(LightTypeEnum::DirectionalLight,{0,0,0},{-1,0,1},0.2),
+     new Light(LightTypeEnum::PointLight,{3,2,-10},{0,0,0},0.6),
 
 };
 
@@ -108,8 +108,8 @@ const std::vector<Triangle*> triangles = {
     new Triangle(vertexes[5], vertexes[7], vertexes[6], {0, 0, 255}),
     new Triangle(vertexes[1], vertexes[5], vertexes[6], {255, 255, 0}),
     new Triangle(vertexes[1], vertexes[6], vertexes[2], {255, 255, 0}),
-    new Triangle(vertexes[4], vertexes[5], vertexes[1], {255, 0, 255}),
-    new Triangle(vertexes[4], vertexes[1], vertexes[0], {255, 0, 255}),
+    new Triangle(vertexes[1], vertexes[0], vertexes[5], {255, 0, 255}),
+    new Triangle(vertexes[5], vertexes[0], vertexes[4], {255, 0, 255}),
     new Triangle(vertexes[2], vertexes[6], vertexes[7], {0, 255, 255}),
     new Triangle(vertexes[2], vertexes[7], vertexes[3], {0, 255, 255})
 };
@@ -119,8 +119,12 @@ Transform* transform2 = new Transform();
 Transform* transform3 = new Transform();
 const auto boundingSphere = new BoundingSphere({0,0,0}, 2*sqrt(3));
 const Model object("cube", triangles,boundingSphere);
-const Model sphere = GenerateSphere(15, {255, 0, 0});
-const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform1),new ModelInstance(&object, { 1.25, 2.5, 7.5 },transform2) ,new ModelInstance(&sphere, { 1.75, -0.5, 7 },transform3)};
+const Model sphere = GenerateSphere(15, {0, 255, 0});
+const std::vector<ModelInstance*> instances = {
+    new ModelInstance(&object, {-1.5, 0, 7 },transform1),
+    new ModelInstance(&object, { 1.25, 2.5, 7.5 },transform2) ,
+    new ModelInstance(&sphere, { 1.75, -0.5, 7 },transform3)
+};
 
 
 const auto planeFront = new Plane({ 0,0,1 }, -1);
@@ -228,11 +232,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         return FALSE;
     }
     // Initialize global objects
-    camera = new Camera({ -3,1,2 }, { 0,1,0 },Constants::PI/6);
+    camera = new Camera({ -3,1,2 }, { 0,1,0 }, Constants::PI / 6);
     rayTraceRender = new RayTraceRender(nullptr, sphereList, lightList, camera);
-    rasterizationRender = new RasterizationRender(nullptr, instances, camera,planes,lightList);
+    rasterizationRender = new RasterizationRender(nullptr, instances, camera,planes, lightList2);
     hBitmap = CreateBitmap(width, height, 1, 32, NULL);
     transform1->SetScale(0.75);
+    transform2->SetRotateState({ 0,1,0 }, -195 * Constants::PI / 180);
     transform3->SetScale(1.5);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
@@ -299,7 +304,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 Canvas* canvas = new Canvas(hMemDC, width, height, camera);
                // transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
-               // transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
+               //transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
                 //camera->Forward();
 
                 //rayTraceRender->SetCanvas(canvas);
