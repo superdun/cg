@@ -59,3 +59,18 @@ const std::array<double, 3>& Triangle::GetNormal() const
     return normal;
 }
 
+void Triangle::SetH0(const double h0)
+{
+    this->h0 = h0;
+}
+
+void Triangle::SetH1(const double h1)
+{
+    this->h1 = h1;
+}
+
+void Triangle::SetH2(const double h2)
+{
+    this->h2 = h2;
+}
+

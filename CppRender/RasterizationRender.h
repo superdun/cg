@@ -13,7 +13,8 @@ private:
 	const Camera* camera;
 	Canvas* canvas;
 	const std::vector<ModelInstance*>& instances;
-
+	const std::vector<const Light*> originalLightList;
+	std::vector<Light*> lightList;
 	const std::array<Plane*, 5> planes;
 	std::vector<std::vector<double>> depthBuffer;
 	void ClipPipeline();
@@ -25,8 +26,11 @@ private:
 	ModelInstance* CreateNewInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	void InitDepthBuffer();
 	void ClearDepthBuffer();
+	double GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const;
+	double DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector) const;
+	double SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const;
 public:
-	RasterizationRender(Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera, const std::array<Plane*, 5>& planes);
+	RasterizationRender(Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera, const std::array<Plane*, 5>& planes, const std::vector<const Light*>& lightList);
 	~RasterizationRender();
 	std::vector<double> Interpolate(int i0, double d0, int i1, double d1) const;
 	std::vector<Pixel*> DrawLine(const std::array<int, 2> p0, const std::array<int, 2> p1,const double p0_depth, const double p1_depth, const std::array<int, 3> color) const;
@@ -38,5 +42,6 @@ public:
 	void RunRender();			
 	void SetCanvas(Canvas* canvas);
 	bool CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth);
+	const std::vector<Light*> GetLightList() const;
 };
 

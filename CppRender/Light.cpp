@@ -9,22 +9,22 @@ Light::~Light()
 {
 }
 
-LightTypeEnum Light::getLightType() const
+LightTypeEnum Light::GetLightType() const
 {
 	return lightType;
 }
 
-std::array<double, 3> Light::getPosition() const
+std::array<double, 3> Light::GetPosition() const
 {
 	return position;
 }
 
-std::array<double, 3> Light::getDirection() const
+std::array<double, 3> Light::GetDirection() const
 {
 	return direction;
 }
 
-double Light::getIntensity() const
+double Light::GetIntensity() const
 {
 	return intensity;
 }

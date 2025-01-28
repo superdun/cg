@@ -17,7 +17,7 @@ public:
 	const std::array<double, 3>& GetTranslation() const;
 	const double& GetAngle() const;
 	const void SetRotateState(const std::array<double, 3>& rotate,const double angle  );
-
+	const void SetScale(const double scale);
 
 };
 

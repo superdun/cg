@@ -6,9 +6,9 @@ private:
     const std::array<double, 3> v0;
     const std::array<double, 3> v1;
     const std::array<double, 3> v2;
-    const double h0;
-    const double h1;
-    const double h2;
+    double h0;
+    double h1;
+    double h2;
     const std::array<int, 3> color;
     const std::array<double, 3> normal;
 public:
@@ -24,4 +24,7 @@ public:
     const double GetH2() const;
     const std::array<double, 3>& GetNormal() const;
     ~Triangle();
+    void SetH0(const double h0);
+    void SetH1(const double h1);
+    void SetH2(const double h2);
 };

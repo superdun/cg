@@ -214,9 +214,15 @@ std::array<double, 4> VectorHelper::BuildHomogeneousPoint(const std::array<doubl
     return result;
 }
 
+std::array<double, 4> VectorHelper::BuildHomogeneousDirection(const std::array<double, 3>& direction)
+{
+    std::array<double, 4> result = { direction[0],direction[1],direction[2],0 };
+    return result;
+}
+
 std::array<double, 3> VectorHelper::Build3DPoint(const std::array<double, 4>& point)
 {
-    std::array<double, 3> result = { point[0] / point[3],point[1] / point[3],point[2] / point[3] };
+    std::array<double, 3> result = { point[0] ,point[1] ,point[2] };
     return result;
 }
 

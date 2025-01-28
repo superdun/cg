@@ -1,7 +1,7 @@
 #include "Camera.h"
 
-Camera::Camera( std::array<double, 3> position,  std::array<double, 3> direction)
-	:position(position), direction(direction)
+Camera::Camera( std::array<double, 3> position,  std::array<double, 3> direction, double angle)
+	:position(position), direction(direction), angle(angle)
 {
 }
 

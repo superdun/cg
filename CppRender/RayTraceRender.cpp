@@ -18,22 +18,22 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
         double minT = 0; 
         const Sphere* closestSphere = nullptr; 
 
-        switch (currentLight->getLightType())
+        switch (currentLight->GetLightType())
         {
         case LightTypeEnum::AmbientLight:
-            lightIntensityScale += currentLight->getIntensity();
+            lightIntensityScale += currentLight->GetIntensity();
             break;
 
         case LightTypeEnum::DirectionalLight:
         case LightTypeEnum::PointLight:
-            if (currentLight->getLightType() == LightTypeEnum::PointLight)
+            if (currentLight->GetLightType() == LightTypeEnum::PointLight)
             {
-                lightDirectionFromSurface = VectorHelper::VectorSub(currentLight->getPosition(), surfacePoint);
+                lightDirectionFromSurface = VectorHelper::VectorSub(currentLight->GetPosition(), surfacePoint);
                 tMax = 100; 
             }
             else 
             {
-                lightDirectionFromSurface = currentLight->getDirection();
+                lightDirectionFromSurface = currentLight->GetDirection();
                 tMax = Constants::Infinity; 
             }
 
@@ -45,8 +45,8 @@ double RayTraceRender::GetLighteningScale(const std::array<double, 3>& surfacePo
 
             if (closestSphere == nullptr)
             {
-                lightIntensityScale += currentLight->getIntensity() * DiffuseReflectionScale(lightDirectionFromSurface, normalVector);
-                lightIntensityScale += currentLight->getIntensity() * SpecularReflectionScale(lightDirectionFromSurface, surfaceToCameraVector, normalVector, specular);
+                lightIntensityScale += currentLight->GetIntensity() * DiffuseReflectionScale(lightDirectionFromSurface, normalVector);
+                lightIntensityScale += currentLight->GetIntensity() * SpecularReflectionScale(lightDirectionFromSurface, surfaceToCameraVector, normalVector, specular);
             }
             break;
 
@@ -111,7 +111,7 @@ RayTraceRender::~RayTraceRender()
 
 void RayTraceRender::RunRender() const
 {
-    const int numThreads = std::thread::hardware_concurrency(); // 获取可用的线程数
+    const int numThreads = std::thread::hardware_concurrency(); 
     std::vector<std::thread> threads;
     std::vector<std::vector<COLORREF>> buffer(canvas->getCanvasHeight(), std::vector<COLORREF>(canvas->getCanvasWidth()));
 
@@ -119,11 +119,11 @@ void RayTraceRender::RunRender() const
     for (int i = 0; i < numThreads; ++i)
     {
         int startY = i * sectionHeight;
-        int endY = (i == numThreads - 1) ? canvas->getCanvasHeight() : startY + sectionHeight; // 确保最后一个线程处理剩余的行
+        int endY = (i == numThreads - 1) ? canvas->getCanvasHeight() : startY + sectionHeight; 
         threads.emplace_back(&RayTraceRender::RenderSection, this, startY, endY, std::ref(buffer));
     }
 
-    // 等待所有线程完成
+
     for (auto& thread : threads)
     {
         thread.join();

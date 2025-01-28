@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "RasterizationRender.h"
 #include <algorithm>
 #include "VectorHelper.h"
@@ -5,8 +6,8 @@
 #include "Utils.h"
 
 
-RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<ModelInstance *> &instances, const Camera *camera, const std::array<Plane *, 5> &planes)
-    : instances(instances), canvas(canvas), camera(camera), planes(planes)
+RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<ModelInstance *> &instances, const Camera *camera, const std::array<Plane *, 5> &planes, const std::vector<const Light*>& lightList)
+    : instances(instances), canvas(canvas), camera(camera), planes(planes), originalLightList(lightList)
 {
 	InitDepthBuffer();
 }
@@ -14,6 +15,10 @@ RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<Model
 
 RasterizationRender::~RasterizationRender()
 {
+	for (auto& light : lightList)
+	{
+		delete light;
+	}
 }
 
 void RasterizationRender::InitDepthBuffer()
@@ -36,6 +41,59 @@ void RasterizationRender::ClearDepthBuffer()
 	InitDepthBuffer();
 }
 
+double RasterizationRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
+{
+	const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub(camera->GetPosition(), surfacePoint);
+    double lightIntensityScale = 0;
+	
+    for (size_t i = 0; i < lightList.size(); i++)
+    {
+        const Light* currentLight = lightList[i];
+        std::array<double, 3> lightDirectionFromSurface;
+        double tMax = 0; 
+        double minT = 0; 
+        const Sphere* closestSphere = nullptr; 
+
+        switch (currentLight->GetLightType())
+        {
+        case LightTypeEnum::AmbientLight:
+            lightIntensityScale += currentLight->GetIntensity();
+            break;
+
+        case LightTypeEnum::DirectionalLight:
+        case LightTypeEnum::PointLight:
+            if (currentLight->GetLightType() == LightTypeEnum::PointLight)
+            {
+                lightDirectionFromSurface = VectorHelper::VectorSub(currentLight->GetPosition(), surfacePoint);
+                tMax = 100; 
+            }
+            else 
+            {
+                lightDirectionFromSurface = currentLight->GetDirection();
+                tMax = Constants::Infinity; 
+            }
+
+			lightIntensityScale += currentLight->GetIntensity() * DiffuseReflectionScale(lightDirectionFromSurface, normalVector);
+            lightIntensityScale += currentLight->GetIntensity() * SpecularReflectionScale(lightDirectionFromSurface, surfaceToCameraVector, normalVector, specular);
+            break;
+
+        default:
+            break;
+        }
+    }
+    return lightIntensityScale;
+}
+double RasterizationRender::DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector) const
+{
+
+	return  std::max(0.0, VectorHelper::VectorDot(normalVector, originRay) / VectorHelper::VectorLength(originRay)) ;
+
+}
+double RasterizationRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const
+{
+	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
+	return  std::max(0.0, std::pow(VectorHelper::VectorDot(reflectRay, surfaceToCameraRay) / (VectorHelper::VectorLength(reflectRay) * VectorHelper::VectorLength(surfaceToCameraRay)),specular));
+}
 std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1, double d1) const
 {
 	std::vector<double> result;
@@ -291,7 +349,11 @@ std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& ins
 		const auto& depth1 = projectedPoints[Utils::ArrayToString(triangle->GetV1())].second;
 		const auto& depth2 = projectedPoints[Utils::ArrayToString(triangle->GetV2())].second;
 
-		auto pixels = DrawFilledTriangle(p0, p1, p2, depth0, depth1, depth2, triangle->GetColor());
+		const auto h0 = triangle->GetH0();	
+		const auto h1 = triangle->GetH1();
+		const auto h2 = triangle->GetH2();
+
+		auto pixels = DrawShadedTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor());
 		for(auto pixel : pixels)
 		{
 			if (pixel->GetPosition()[0] >= 0 && pixel->GetPosition()[0] <= canvas->getCanvasWidth() && pixel->GetPosition()[1] >= 0 && pixel->GetPosition()[1] <= canvas->getCanvasHeight())
@@ -323,6 +385,16 @@ void RasterizationRender::RunRender()
 		VectorHelper::Build4DInverseTranslationMatrix(camera->GetPosition()),
 		VectorHelper::Build4DRotateInverseMatrix(camera->GetAngle(), camera->GetDirection())
 	);
+	lightList.reserve(originalLightList.size());
+	for (const auto& light : originalLightList)
+	{
+		const auto newLight = new Light(light->GetLightType(),
+		 VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousPoint(light->GetPosition()), matrix_camera)), 
+		 VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(light->GetDirection()), matrix_camera)), 
+		 light->GetIntensity());
+		 
+		lightList.push_back(newLight);
+	}
 	
 	for (const auto& instance : instances)
 	{
@@ -354,6 +426,11 @@ void RasterizationRender::RunRender()
 		delete instance;
 	}
 	clippedInstances.clear();
+	for (auto& light : lightList)
+	{
+		delete light;
+	}
+	lightList.clear();
 }
 
 void RasterizationRender::ClipPipeline()
@@ -518,7 +595,8 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 	{
 		throw std::runtime_error("Model bounding sphere is null.");
 	}
-	
+
+
 	const auto modelBoundingSphereCenterPoint = modelBoundingSphere->GetCenterPoint();
 	const auto modelRadius = modelBoundingSphere->GetRadius();
     const auto homoCenterPoint = VectorHelper::BuildHomogeneousPoint(modelBoundingSphereCenterPoint);
@@ -545,8 +623,20 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 		const auto newTriangle = new Triangle(v0, v1, v2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
 		if (IsBackTriangle(newTriangle, matrix_model_camera))
 		{
+			delete newTriangle;
 			continue;
 		}
+		//Gouraud Shading
+		const auto normal = triangle->GetNormal();
+		const auto cameraPosition = camera->GetPosition();
+		const auto h0 = GetLighteningScale(triangle->GetV0(), normal, 500);
+		const auto h1 = GetLighteningScale(triangle->GetV1(), normal, 500);
+		const auto h2 = GetLighteningScale(triangle->GetV2(), normal, 500);
+		newTriangle->SetH0(h0);
+		newTriangle->SetH1(h1);
+		newTriangle->SetH2(h2);
+
+		
 		newTriangles.push_back(newTriangle);
 	}
 	newInstance->SetTriangles(newTriangles);
@@ -567,5 +657,8 @@ bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& poi
 	return false;
 }
 
-
+const std::vector<Light*> RasterizationRender::GetLightList() const
+{
+	return lightList;
+}
 

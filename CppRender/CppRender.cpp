@@ -30,6 +30,43 @@ RasterizationRender* rasterizationRender = nullptr;
 
 HBITMAP hBitmap;
 
+Model GenerateSphere(int divs, const std::array<int, 3>& color) {
+    std::vector<std::array<double, 3>> vertexes;
+    std::vector<Triangle*> triangles;
+
+    double delta_angle = 2.0 * Constants::PI / divs;
+
+    // 生成顶点
+    for (int d = 0; d <= divs; ++d) {
+        double y = (2.0 / divs) * (d - divs / 2.0);
+        double radius = std::sqrt(1.0 - y * y);
+        for (int i = 0; i < divs; ++i) {
+            double x = radius * std::cos(i * delta_angle);
+            double z = radius * std::sin(i * delta_angle);
+            vertexes.push_back({x, y, z});
+        }
+    }
+
+    // 生成三角形
+    for (int d = 0; d < divs; ++d) {
+        for (int i = 0; i < divs; ++i) {
+            int i0 = d * divs + i;
+            int i1 = (d + 1) * divs + (i + 1) % divs;
+            int i2 = d * divs + (i + 1) % divs;
+            int i3 = (d + 1) * divs + i;
+
+            // 创建两个三角形
+            triangles.push_back(new Triangle(vertexes[i0], vertexes[i1], vertexes[i2], color));
+            triangles.push_back(new Triangle(vertexes[i0], vertexes[i3], vertexes[i1], color));
+        }
+    }
+
+    // 假设 BoundingSphere 是通过某种方式计算得出的
+    BoundingSphere* boundingSphere = new BoundingSphere({0,0,0}, 1); // 这里需要实现具体的初始化
+
+    return Model("Sphere", triangles, boundingSphere);
+}
+
 const std::vector<const Sphere*> sphereList = {
     new Sphere({0.0, -1, 3}, 1.0, {255, 0, 0}, 500, 0.2),
     new Sphere({2, 0.0, 4.0}, 1.0, {0, 0, 255}, 500, 0.3),
@@ -43,6 +80,14 @@ const std::vector<const Light*> lightList = {
      new Light(LightTypeEnum::DirectionalLight,{0,0,0},{1,4,4},0.2),
 
 };
+
+const std::vector<const Light*> lightList2 = {
+     new Light(LightTypeEnum::AmbientLight,{0,0,0},{0,0,0},0.2),
+     new Light(LightTypeEnum::PointLight,{-3,2,-10},{0,0,0},0.6),
+     new Light(LightTypeEnum::DirectionalLight,{0,0,0},{-1,0,1},0.2),
+
+};
+
 const std::vector< std::array<double, 3>> vertexes = {
     {{1, 1, 1}},
     {{-1, 1, 1}},
@@ -71,9 +116,11 @@ const std::vector<Triangle*> triangles = {
 
 Transform* transform1 = new Transform();
 Transform* transform2 = new Transform();
+Transform* transform3 = new Transform();
 const auto boundingSphere = new BoundingSphere({0,0,0}, 2*sqrt(3));
 const Model object("cube", triangles,boundingSphere);
-const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform1),new ModelInstance(&object, { 1.25, 2, 7.5 },transform2) };
+const Model sphere = GenerateSphere(15, {255, 0, 0});
+const std::vector<ModelInstance*> instances = { new ModelInstance(&object, {-1.5, 0, 7 },transform1),new ModelInstance(&object, { 1.25, 2.5, 7.5 },transform2) ,new ModelInstance(&sphere, { 1.75, -0.5, 7 },transform3)};
 
 
 const auto planeFront = new Plane({ 0,0,1 }, -1);
@@ -181,11 +228,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         return FALSE;
     }
     // Initialize global objects
-    camera = new Camera({ 0,0,0 }, { 0,0,0 });
+    camera = new Camera({ -3,1,2 }, { 0,1,0 },Constants::PI/6);
     rayTraceRender = new RayTraceRender(nullptr, sphereList, lightList, camera);
-    rasterizationRender = new RasterizationRender(nullptr, instances, camera,planes);
+    rasterizationRender = new RasterizationRender(nullptr, instances, camera,planes,lightList);
     hBitmap = CreateBitmap(width, height, 1, 32, NULL);
-
+    transform1->SetScale(0.75);
+    transform3->SetScale(1.5);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
@@ -250,8 +298,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SelectObject(hMemDC, hBitmap);
 
                 Canvas* canvas = new Canvas(hMemDC, width, height, camera);
-                transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
-                transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
+               // transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
+               // transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
                 //camera->Forward();
 
                 //rayTraceRender->SetCanvas(canvas);

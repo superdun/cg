@@ -45,3 +45,8 @@ const void Transform::SetRotateState(const std::array<double, 3>& rotate, const 
 	this->angle = angle;
 
 }
+
+const void Transform::SetScale(const double scale)
+{
+	this->scale = scale;
+}

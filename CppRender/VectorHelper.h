@@ -30,6 +30,7 @@ public:
     static std::array<double, 4>  VerticeMatrixMultiply(const std::array< double, 4>& vertice, const std::array< std::array<double, 4>, 4>& matrix);
     static std::array< std::array<double, 4>, 4> MatrixMultiply(const std::array< std::array<double, 4>, 4>& matrix1, const std::array< std::array<double, 4>, 4>& matrix2);
     static std::array<double, 4> BuildHomogeneousPoint(const std::array<double, 3>& point);
+    static std::array<double, 4> BuildHomogeneousDirection(const std::array<double, 3>& direction);
     static std::array<double, 3> Build3DPoint(const std::array<double, 4>& point);
     static std::array<double, 2> Build2DPoint(const std::array<double, 4>& point);
     static std::array<double, 3> Build2DPointWithDepth(const std::array<double, 4>& point);
