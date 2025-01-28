@@ -19,10 +19,12 @@ private:
 	void ClipPipeline();
 	ModelInstance* ClipInstance( ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	ModelInstance* ClipInstanceAgainstPlane( ModelInstance* instance,  const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
+	bool IsBackTriangle(const Triangle* triangle,const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	std::vector<Triangle*> ClipTrianglesAgainstPlane(const ModelInstance* instance, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	std::vector<Triangle*>  ClipTriangleAgainstPlane(const Triangle* triangle, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	ModelInstance* CreateNewInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	void InitDepthBuffer();
+	void ClearDepthBuffer();
 public:
 	RasterizationRender(Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera, const std::array<Plane*, 5>& planes);
 	~RasterizationRender();
@@ -33,7 +35,7 @@ public:
 	std::vector<Pixel*> DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const double p0_depth, const double p1_depth, const double p2_depth, const double h1, const double h2, const double h3, const std::array<int, 3>& color) const;
 	std::array<double, 2> ProjectVertex(const std::array<double, 3>& vertex, const double d, const std::array<double, 3>& modelPosition) const;
 	std::vector<Pixel*> RenderInstance(const ModelInstance& model, const std::array< std::array<double, 4>, 4>& matrix_camera) const;
-	void RunRender();
+	void RunRender();			
 	void SetCanvas(Canvas* canvas);
 	bool CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth);
 };

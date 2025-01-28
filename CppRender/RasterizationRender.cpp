@@ -25,10 +25,15 @@ void RasterizationRender::InitDepthBuffer()
 		{
 			for (int j = 0; j < canvas->getCanvasHeight(); j++)
 			{
-				depthBuffer[i][j] = DBL_MAX;
+				depthBuffer[i][j] = 0;
 			}
 		}
 	}
+}
+
+void RasterizationRender::ClearDepthBuffer()
+{
+	InitDepthBuffer();
 }
 
 std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1, double d1) const
@@ -410,6 +415,20 @@ ModelInstance* RasterizationRender::ClipInstanceAgainstPlane( ModelInstance* ins
 
 }
 
+bool RasterizationRender::IsBackTriangle(const Triangle* triangle, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
+{	
+	const auto normal = triangle->GetNormal();
+	const auto cameraPosition = camera->GetPosition();
+	const auto cameraDirectionVector = VectorHelper::VectorSub(cameraPosition, triangle->GetV0());
+	const auto cos = VectorHelper::GetCosBetweenVectors(normal, cameraDirectionVector);
+	if (cos > 0)
+	{
+		return false;
+	}
+	return true;
+
+}
+
 std::vector<Triangle*> RasterizationRender::ClipTrianglesAgainstPlane(const ModelInstance* instance, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera)
 {
 	const auto triangles = instance->GetTriangles();
@@ -519,10 +538,15 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 	}
 	std::vector<Triangle*> newTriangles;
 	for (auto& triangle : triangles){
+
 		const auto v0 = calculatedPoints[Utils::ArrayToString(triangle->GetV0())];
 		const auto v1 = calculatedPoints[Utils::ArrayToString(triangle->GetV1())];
 		const auto v2 = calculatedPoints[Utils::ArrayToString(triangle->GetV2())];
 		const auto newTriangle = new Triangle(v0, v1, v2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
+		if (IsBackTriangle(newTriangle, matrix_model_camera))
+		{
+			continue;
+		}
 		newTriangles.push_back(newTriangle);
 	}
 	newInstance->SetTriangles(newTriangles);
@@ -535,9 +559,9 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 
 bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth)
 {
-	if (depthBuffer[point[0]][point[1]] > depth)
+	if (depthBuffer[point[0]][point[1]] < 1/depth)
 	{
-		depthBuffer[point[0]][point[1]] = depth;
+		depthBuffer[point[0]][point[1]] = 1/depth;
 		return true;
 	}
 	return false;

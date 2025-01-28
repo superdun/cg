@@ -1,7 +1,6 @@
 #include "VectorHelper.h"
 #include "Constants.h"
 
-
 std::array<double, 3> VectorHelper::VectorAdd(const std::array<double, 3>& point, const std::array<double, 3>& v) {
     std::array<double, 3> result;
     result[0] = point[0] + v[0];
@@ -253,3 +252,25 @@ std::pair<std::array<double, 3>, double> VectorHelper::GetPlaneLineIntersection(
     const double t = -1 * D - VectorDot(normal, pointA) / VectorDot(normal, VectorSub(pointB, pointA));
     return { VectorAdd(pointA, VectorScale(VectorSub(pointB, pointA), t)), t };
 }
+
+std::array<double, 3> VectorHelper::GetNormal(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3)
+{
+    return VectorNormalize(GetNormalWithoutNormalize(p1, p2, p3));
+}
+
+std::array<double, 3> VectorHelper::GetNormalWithoutNormalize(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3)
+{
+    return VectorProduct(VectorSub(p2, p1), VectorSub(p3, p1));
+}
+
+double VectorHelper::GetAngleBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2)
+{
+    return acos(GetCosBetweenVectors(v1, v2));
+}
+
+double VectorHelper::GetCosBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2)
+{
+    return VectorDot(v1, v2) / (VectorLength(v1) * VectorLength(v2));
+}
+
+

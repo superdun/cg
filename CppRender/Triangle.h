@@ -10,7 +10,7 @@ private:
     const double h1;
     const double h2;
     const std::array<int, 3> color;
-
+    const std::array<double, 3> normal;
 public:
     Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color);
     Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color, const double h0, const double h1, const double h2);
@@ -22,5 +22,6 @@ public:
     const double GetH0() const;
     const double GetH1() const;
     const double GetH2() const;
+    const std::array<double, 3>& GetNormal() const;
     ~Triangle();
 };

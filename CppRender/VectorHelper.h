@@ -3,7 +3,7 @@
 #define VECTORHELPER_H
 
 #include <array>
-#include <cmath> // Ϊ��ʹ�� sqrt �� acos
+#include <cmath> 
 #include "Plane.h"
 class VectorHelper
 {
@@ -36,6 +36,10 @@ public:
     static double GetSingnedVertexToPlaneDistance(const std::array<double, 3>& vertex, const Plane* planePointer);
     static std::array<double, 3> GetPlaneNormal(const std::array<double, 4>* planePointer);
     static std::pair<std::array<double, 3>, double> GetPlaneLineIntersection(const Plane* plane, const std::array<double, 3>& pointA, const std::array<double, 3>& pointB);
+    static std::array<double, 3> GetNormal(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3);
+    static std::array<double, 3> GetNormalWithoutNormalize(const std::array<double, 3>& p1, const std::array<double, 3>& p2, const std::array<double, 3>& p3);
+    static double GetAngleBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2);
+    static double GetCosBetweenVectors(const std::array<double, 3>& v1, const std::array<double, 3>& v2);
 };
 
 #endif // VECTORHELPER_H

@@ -1,15 +1,17 @@
 #include "Triangle.h"
+#include "VectorHelper.h"
+
 Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color)
-    : v0(v0), v1(v1), v2(v2), color(color), h0(1), h1(1), h2(1)
+    : v0(v0), v1(v1), v2(v2), color(color), h0(1), h1(1), h2(1), normal(VectorHelper::GetNormal(v0, v1, v2))
 {
 }
 Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color, const double h0, const double h1, const double h2)
-    : v0(v0), v1(v1), v2(v2), color(color), h0(h0), h1(h1), h2(h2)
+    : v0(v0), v1(v1), v2(v2), color(color), h0(h0), h1(h1), h2(h2), normal(VectorHelper::GetNormal(v0, v1, v2))
 {
 }
 
 Triangle::Triangle(const Triangle& other)
-    : v0(other.v0), v1(other.v1), v2(other.v2), color(other.color), h0(other.h0), h1(other.h1), h2(other.h2)
+    : v0(other.v0), v1(other.v1), v2(other.v2), color(other.color), h0(other.h0), h1(other.h1), h2(other.h2),normal(other.normal)
 {
 }
 
@@ -50,5 +52,10 @@ const double Triangle::GetH1() const
 const double Triangle::GetH2() const
 {
     return h2;
+}
+
+const std::array<double, 3>& Triangle::GetNormal() const
+{
+    return normal;
 }
 
