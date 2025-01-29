@@ -798,9 +798,9 @@ var cube = Model(vertexes, triangles, Vertex(0, 0, 0), Math.sqrt(3));
 var sphere = GenerateSphere(15, GREEN);
 
 var instances = [
-  Instance(cube, Vertex(-1.5, 0, 7), Identity4x4, 0.75),
+  //Instance(cube, Vertex(-1.5, 0, 7), Identity4x4, 0.75),
   Instance(cube, Vertex(1.25, 2.5, 7.5), MakeOYRotationMatrix(195)),
-  Instance(sphere, Vertex(1.75, -0.5, 7), Identity4x4, 1.5),
+  //Instance(sphere, Vertex(1.75, -0.5, 7), Identity4x4, 1.5),
 ];
 
 var camera = Camera(Vertex(-3, 1, 2), MakeOYRotationMatrix(-30));

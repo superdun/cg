@@ -43,6 +43,7 @@ void RasterizationRender::ClearDepthBuffer()
 
 double RasterizationRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
 {
+	//书上此处代码有错，不应从摄像机当前位置计算，因为已经经过了坐标变换
 	const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub({0,0,0}, surfacePoint);
     double lightIntensityScale = 0;
 	
@@ -91,10 +92,11 @@ double RasterizationRender::DiffuseReflectionScale(const std::array<double, 3>& 
 }
 double RasterizationRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const
 {
+	//书上此处代码有错，计算反射光应该是单位法向量，书中代码没有归一化
 	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
 	const auto cos = VectorHelper::GetCosBetweenVectors(reflectRay, surfaceToCameraRay);
-	auto a = std::pow(cos, specular);
-	return  std::max(0.0, a);
+	auto pw = std::pow(cos, specular);
+	return  std::max(0.0, pw);
 }
 std::vector<double>  RasterizationRender::Interpolate(int i0, double d0, int i1, double d1) const
 {
