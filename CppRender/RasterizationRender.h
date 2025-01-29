@@ -29,6 +29,7 @@ private:
 	double GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const;
 	double DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector) const;
 	double SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const;
+	bool CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double reciprocalDepth);
 public:
 	RasterizationRender(Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera, const std::array<Plane*, 5>& planes, const std::vector<const Light*>& lightList);
 	~RasterizationRender();
@@ -36,12 +37,20 @@ public:
 	std::vector<Pixel*> DrawLine(const std::array<int, 2> p0, const std::array<int, 2> p1,const double p0_depth, const double p1_depth, const std::array<int, 3> color) const;
 	std::vector<Pixel*> DrawWireFrameTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double p0_depth, const double p1_depth, const double p2_depth, const std::array<int, 3>& color) const;
 	std::vector<Pixel*> DrawFilledTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const double p0_depth, const double p1_depth, const double p2_depth, const std::array<int, 3>& color) const;
-	std::vector<Pixel*> DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, const double p0_depth, const double p1_depth, const double p2_depth, const double h1, const double h2, const double h3, const std::array<int, 3>& color) const;
+	std::vector<Pixel*> DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2, 
+	const double p0_depth, const double p1_depth, const double p2_depth, 
+	const double h1, const double h2, const double h3, const std::array<int, 3>& color) const;
+	std::vector<Pixel*> DrawShadedTextureTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,
+	 const double p0_depth, const double p1_depth, const double p2_depth,
+	  const double h1, const double h2, const double h3, 
+	  const std::array<int, 3>& color, const Texture* texture,
+	  const std::array<int, 2> uv0, const std::array<int, 2> uv1, const std::array<int, 2> uv2
+	  ) const;
 	std::array<double, 2> ProjectVertex(const std::array<double, 3>& vertex, const double d, const std::array<double, 3>& modelPosition) const;
 	std::vector<Pixel*> RenderInstance(const ModelInstance& model, const std::array< std::array<double, 4>, 4>& matrix_camera) const;
 	void RunRender();			
 	void SetCanvas(Canvas* canvas);
-	bool CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth);
+	
 	const std::vector<Light*> GetLightList() const;
 };
 

@@ -92,6 +92,8 @@ const std::vector<const Light *> lightList2 = {
 
 };
 
+const Texture* texture = new Texture("C:\\Users\\lidad\\repos\\cg\\CppRender\\crate-texture.jpg");
+
 const std::vector<std::array<double, 3>> vertexes = {
     {{1, 1, 1}},
     {{-1, 1, 1}},
@@ -103,18 +105,19 @@ const std::vector<std::array<double, 3>> vertexes = {
     {{1, -1, -1}}};
 
 const std::vector<Triangle *> triangles = {
-    new Triangle(vertexes[0], vertexes[1], vertexes[2], {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {255, 0, 0}),
-    new Triangle(vertexes[0], vertexes[2], vertexes[3], {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {255, 0, 0}),
-    new Triangle(vertexes[4], vertexes[0], vertexes[3], {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {0, 255, 0}),
-    new Triangle(vertexes[4], vertexes[3], vertexes[7], {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {0, 255, 0}),
-    new Triangle(vertexes[5], vertexes[4], vertexes[7], {0, 0, -1}, {0, 0, -1}, {0, 0, -1}, {0, 0, 255}),
-    new Triangle(vertexes[5], vertexes[7], vertexes[6], {0, 0, -1}, {0, 0, -1}, {0, 0, -1}, {0, 0, 255}),
-    new Triangle(vertexes[1], vertexes[5], vertexes[6], {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0}, {255, 255, 0}),
-    new Triangle(vertexes[1], vertexes[6], vertexes[2], {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0}, {255, 255, 0}),
-    new Triangle(vertexes[1], vertexes[0], vertexes[5], {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {255, 0, 255}),
-    new Triangle(vertexes[5], vertexes[0], vertexes[4], {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {255, 0, 255}),
-    new Triangle(vertexes[2], vertexes[6], vertexes[7], {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, 255, 255}),
-    new Triangle(vertexes[2], vertexes[7], vertexes[3], {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, 255, 255})};
+    new Triangle(vertexes[0], vertexes[1], vertexes[2], {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {255, 0, 0}, texture, {0, 0}, {1, 0}, {1, 1}), 
+    new Triangle(vertexes[0], vertexes[2], vertexes[3], {0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {255, 0, 0}, texture, {0, 0}, {1, 1}, {0, 1}), 
+    new Triangle(vertexes[4], vertexes[0], vertexes[3], {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {0, 255, 0}, texture, {0, 0}, {1, 0}, {1, 1}), 
+    new Triangle(vertexes[4], vertexes[3], vertexes[7], {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {0, 255, 0}, texture, {0, 0}, {1, 1}, {0, 1}), 
+    new Triangle(vertexes[5], vertexes[4], vertexes[7], {0, 0, -1}, {0, 0, -1}, {0, 0, -1}, {0, 0, 255}, texture, {0, 0}, {1, 0}, {1, 1}), 
+    new Triangle(vertexes[5], vertexes[7], vertexes[6], {0, 0, -1}, {0, 0, -1}, {0, 0, -1}, {0, 0, 255}, texture, {0, 0}, {1, 1}, {0, 1}), 
+    new Triangle(vertexes[1], vertexes[5], vertexes[6], {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0}, {255, 255, 0}, texture, {0, 0}, {1, 0}, {1, 1}),
+    new Triangle(vertexes[1], vertexes[6], vertexes[2], {-1, 0, 0}, {-1, 0, 0}, {-1, 0, 0}, {255, 255, 0}, texture, {0, 0}, {1, 1}, {0, 1}), 
+    new Triangle(vertexes[1], vertexes[0], vertexes[5], {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {255, 0, 255}, texture, {0, 0}, {1, 0}, {1, 1}), 
+    new Triangle(vertexes[5], vertexes[0], vertexes[4], {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {255, 0, 255}, texture, {0, 1}, {1, 1}, {0, 0}), 
+    new Triangle(vertexes[2], vertexes[6], vertexes[7], {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, 255, 255}, texture, {0, 0}, {1, 0}, {1, 1}),
+    new Triangle(vertexes[2], vertexes[7], vertexes[3], {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, 255, 255}, texture, {0, 0}, {1, 1}, {0, 1})  
+};
 
 Transform *transform1 = new Transform();
 Transform *transform2 = new Transform();
@@ -298,8 +301,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SelectObject(hMemDC, hBitmap);
 
                 Canvas *canvas = new Canvas(hMemDC, width, height, camera);
-                // transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
-                // transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
+                transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
+                transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
                 // camera->Forward();
 
                 // rayTraceRender->SetCanvas(canvas);

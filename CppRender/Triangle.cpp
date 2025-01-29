@@ -1,15 +1,21 @@
 #include "Triangle.h"
 #include "VectorHelper.h"
 
-Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color)
-    : v0(v0), v1(v1), v2(v2), color(color), h0(1), h1(1), h2(1), normal(VectorHelper::GetNormal(v0, v1, v2))
+Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color)
+    : v0(v0), v1(v1), v2(v2), color(color), h0(1), h1(1), h2(1), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), texture(nullptr), textureUV0({0, 0}), textureUV1({0, 0}), textureUV2({0, 0})
+{
+
+}
+
+Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color, const Texture* texture, const std::array<int, 2> textureUV0, const std::array<int, 2> textureUV1, const std::array<int, 2> textureUV2)
+    : v0(v0), v1(v1), v2(v2), color(color), texture(texture), textureUV0(textureUV0), textureUV1(textureUV1), textureUV2(textureUV2), h0(1), h1(1), h2(1), normal(VectorHelper::GetNormal(v0, v1, v2))
 {
     normal0 = normal;
     normal1 = normal;
     normal2 = normal;
 }
-Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color, const double h0, const double h1, const double h2)
-    : v0(v0), v1(v1), v2(v2), color(color), h0(h0), h1(h1), h2(h2), normal(VectorHelper::GetNormal(v0, v1, v2))
+Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2, const std::array<int, 3> color, const Texture* texture, const std::array<int, 2> textureUV0, const std::array<int, 2> textureUV1, const std::array<int, 2> textureUV2, const double h0, const double h1, const double h2)
+    : v0(v0), v1(v1), v2(v2), color(color), texture(texture), textureUV0(textureUV0), textureUV1(textureUV1), textureUV2(textureUV2), h0(h0), h1(h1), h2(h2), normal(VectorHelper::GetNormal(v0, v1, v2))
 {
     normal0 = normal;
     normal1 = normal;
@@ -17,17 +23,17 @@ Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v
 }
 
 Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2,
-                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color)
-    : v0(v0), v1(v1), v2(v2), h0(1), h1(1), h2(1), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color)
+                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color, const Texture* texture, const std::array<int, 2> textureUV0, const std::array<int, 2> textureUV1, const std::array<int, 2> textureUV2)
+    : v0(v0), v1(v1), v2(v2), h0(1), h1(1), h2(1), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color), texture(texture), textureUV0(textureUV0), textureUV1(textureUV1), textureUV2(textureUV2)
 {
 }
 Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2,
-                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color, const double h0, const double h1, const double h2)
-    : v0(v0), v1(v1), v2(v2), h0(h0), h1(h1), h2(h2), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color)
+                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color, const Texture* texture, const std::array<int, 2> textureUV0, const std::array<int, 2> textureUV1, const std::array<int, 2> textureUV2, const double h0, const double h1, const double h2)
+    : v0(v0), v1(v1), v2(v2), h0(h0), h1(h1), h2(h2), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color), texture(texture), textureUV0(textureUV0), textureUV1(textureUV1), textureUV2(textureUV2)
 {
 }
 Triangle::Triangle(const Triangle& other)
-    : v0(other.v0), v1(other.v1), v2(other.v2), color(other.color), h0(other.h0), h1(other.h1), h2(other.h2), normal(other.normal), normal0(other.normal0), normal1(other.normal1), normal2(other.normal2)
+    : v0(other.v0), v1(other.v1), v2(other.v2), color(other.color), h0(other.h0), h1(other.h1), h2(other.h2), normal(other.normal), normal0(other.normal0), normal1(other.normal1), normal2(other.normal2), texture(other.texture), textureUV0(other.textureUV0), textureUV1(other.textureUV1), textureUV2(other.textureUV2)
 {
 }
 
@@ -120,3 +126,22 @@ void Triangle::SetNormal2(const std::array<double, 3> normal2)
     this->normal2 = normal2;
 }
 
+const Texture* Triangle::GetTexture() const
+{
+    return texture;
+}
+
+const std::array<int, 2>& Triangle::GetTextureUV0() const
+{
+    return textureUV0;
+}
+
+const std::array<int, 2>& Triangle::GetTextureUV1() const
+{
+    return textureUV1;
+}
+
+const std::array<int, 2>& Triangle::GetTextureUV2() const
+{
+    return textureUV2;
+}

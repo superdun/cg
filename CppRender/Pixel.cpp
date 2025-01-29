@@ -1,7 +1,7 @@
 #include "Pixel.h"
 
-Pixel::Pixel(int x, int y, std::array<int, 3> color, double depth):
-	position({ x,y }), color(color), depth(depth)
+Pixel::Pixel(int x, int y, std::array<int, 3> color, double reciprocalDepth):
+	position({ x,y }), color(color), reciprocalDepth(reciprocalDepth)
 {
 }
 
@@ -19,9 +19,9 @@ const std::array<int, 3>& Pixel::GetColor() const
 	return color;
 }
 
-const double Pixel::GetDepth() const
+const double Pixel::GetReciprocalDepth() const
 {
-	return depth;
+	return reciprocalDepth;
 }
 
 

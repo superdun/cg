@@ -194,38 +194,38 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
 	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 	
-	auto depthListLow = Interpolate(p0_new[1], p0_depth_new, p2_new[1], p2_depth_new);
-	auto depthListHigher = Interpolate(p1_new[1], p1_depth_new, p2_new[1], p2_depth_new);
-	auto depthListHighest = Interpolate(p0_new[1], p0_depth_new, p1_new[1], p1_depth_new);
+	auto reciprocalDepthListLow = Interpolate(p0_new[1], 1/p0_depth_new, p2_new[1], 1/p2_depth_new);
+	auto reciprocalDepthListHigher = Interpolate(p1_new[1], 1/p1_depth_new, p2_new[1], 1/p2_depth_new);
+	auto reciprocalDepthListHighest = Interpolate(p0_new[1], 1/p0_depth_new, p1_new[1], 1/p1_depth_new);
 
 	for (int y = p0_new[1]; y <= p2_new[1]; y++)
 	{
 		auto xLow = xListLow[y - p0_new[1]];
-		auto depthOnEdge1 = depthListLow[y - p0_new[1]];
+		auto reciprocalDepthOnEdge1 = reciprocalDepthListLow[y - p0_new[1]];
 		std::array<int, 2> pOnEdge1 = { xLow,y };
-		double depthOnEdge2;
+		double reciprocalDepthOnEdge2;
 		std::array<int, 2> pOnEdge2;
 
 		if (y< p1_new[1])
 		{	
-			depthOnEdge2 = depthListHighest[y - p0_new[1]];
+			reciprocalDepthOnEdge2 = reciprocalDepthListHighest[y - p0_new[1]];
 			pOnEdge2 = { (int)xListHighest[y- p0_new[1]],y};
 
 		}
 		else {
-			depthOnEdge2 = depthListHigher[y - p1_new[1]];
+			reciprocalDepthOnEdge2 = reciprocalDepthListHigher[y - p1_new[1]];
 			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
 		}
 		if (pOnEdge1[0]> pOnEdge2[0])
 		{
 			std::swap(pOnEdge1, pOnEdge2);
-			std::swap(depthOnEdge1, depthOnEdge2);
+			std::swap(reciprocalDepthOnEdge1, reciprocalDepthOnEdge2);
 		}
-		auto depthListHorizontal = Interpolate(pOnEdge1[0], depthOnEdge1, pOnEdge2[0], depthOnEdge2);
+		auto reciprocalDepthListHorizontal = Interpolate(pOnEdge1[0], reciprocalDepthOnEdge1, pOnEdge2[0], reciprocalDepthOnEdge2);
 		for (int x = pOnEdge1[0]; x <= pOnEdge2[0]; x++)
 		{
-			auto depth = depthListHorizontal[x - pOnEdge1[0]];
-			result.push_back(new Pixel(x,y,color,depth));
+			auto reciprocalDepth = reciprocalDepthListHorizontal[x - pOnEdge1[0]];
+			result.push_back(new Pixel(x,y,color,reciprocalDepth));
 		}
 
 	}
@@ -234,7 +234,10 @@ std::vector<Pixel*> RasterizationRender::DrawFilledTriangle(const std::array<int
 	return result;
 }
 
-std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,const double p0_depth, const double p1_depth, const double p2_depth, const double h0, const double h1, const double h2,  const std::array<int, 3>& color) const
+std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,
+const double p0_depth, const double p1_depth, const double p2_depth, 
+const double h0, const double h1, const double h2, 
+ const std::array<int, 3>& color) const
 {
 	std::vector<Pixel*> result;
 	std::array<int, 2> p0_new = p0;
@@ -267,50 +270,171 @@ std::vector<Pixel*> RasterizationRender::DrawShadedTriangle(const std::array<int
 	}
 	auto xListLow = Interpolate(p0_new[1], p0_new[0], p2_new[1], p2_new[0]);
 	auto hListLow = Interpolate(p0_new[1], h0_new, p2_new[1], h2_new);
-	auto depthListLow = Interpolate(p0_new[1], p0_depth_new, p2_new[1], p2_depth_new);
+	auto reciprocalDepthListLow = Interpolate(p0_new[1], 1/p0_depth_new, p2_new[1], 1/p2_depth_new);
 
 	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
 	auto hListHigher = Interpolate(p1_new[1], h1_new, p2_new[1], h2_new);
-	auto depthListHigher = Interpolate(p1_new[1], p1_depth_new, p2_new[1], p2_depth_new);
+	auto reciprocalDepthListHigher = Interpolate(p1_new[1], 1/p1_depth_new, p2_new[1], 1/p2_depth_new);
 
 	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
 	auto hListHighest = Interpolate(p0_new[1], h0_new, p1_new[1], h1_new);
-	auto depthListHighest = Interpolate(p0_new[1], p0_depth_new, p1_new[1], p1_depth_new);
+	auto reciprocalDepthListHighest = Interpolate(p0_new[1], 1/p0_depth_new, p1_new[1], 1/p1_depth_new);
 
 	for (int y = p0_new[1]; y <= p2_new[1]; y++)
 	{
 		auto xOnEdge1 = xListLow[y - p0_new[1]];
 		auto hOnEdge1 = hListLow[y - p0_new[1]];
-		auto depthOnEdge1 = depthListLow[y - p0_new[1]];
+		auto reciprocalDepthOnEdge1 = reciprocalDepthListLow[y - p0_new[1]];
 		double hOnEdge2;
-		double depthOnEdge2;
+		double reciprocalDepthOnEdge2;
 		std::array<int, 2> pOnEdge1 = { xOnEdge1,y };
 		std::array<int, 2> pOnEdge2;
 		if (y < p1_new[1])
 		{
 			hOnEdge2 = hListHighest[y - p0_new[1]];
 			pOnEdge2 = { (int)xListHighest[y - p0_new[1]],y };
-			depthOnEdge2 = depthListHighest[y - p0_new[1]];
+			reciprocalDepthOnEdge2 = reciprocalDepthListHighest[y - p0_new[1]];
 		}
 		else {
 			hOnEdge2 = hListHigher[y - p1_new[1]];
 			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
-			depthOnEdge2 = depthListHigher[y - p1_new[1]];
+			reciprocalDepthOnEdge2 = reciprocalDepthListHigher[y - p1_new[1]];
 		}
 		if (pOnEdge1[0] > pOnEdge2[0])
 		{
 			std::swap(pOnEdge1, pOnEdge2);
 			std::swap(hOnEdge1, hOnEdge2);
-			std::swap(depthOnEdge1, depthOnEdge2);
+			std::swap(reciprocalDepthOnEdge1, reciprocalDepthOnEdge2);
 		}
 		auto hListHorizontal = Interpolate(pOnEdge1[0], hOnEdge1, pOnEdge2[0], hOnEdge2);
-		auto depthListHorizontal = Interpolate(pOnEdge1[0], depthOnEdge1, pOnEdge2[0], depthOnEdge2);
+		auto reciprocalDepthListHorizontal = Interpolate(pOnEdge1[0], reciprocalDepthOnEdge1, pOnEdge2[0], reciprocalDepthOnEdge2);
 		for (int x = pOnEdge1[0]; x <= pOnEdge2[0]; x++)
 		{
 			auto h = hListHorizontal[x - pOnEdge1[0]];
-			auto depth = depthListHorizontal[x - pOnEdge1[0]];
+			auto reciprocalDepth = reciprocalDepthListHorizontal[x - pOnEdge1[0]];
 			auto newColor = VectorHelper::ColorVectorScale(color, h);
-			result.push_back(new Pixel(x, y, newColor, depth));
+			result.push_back(new Pixel(x, y, newColor, reciprocalDepth));
+		}
+
+	}
+
+
+	return result;
+}
+
+std::vector<Pixel*> RasterizationRender::DrawShadedTextureTriangle(const std::array<int, 2> p0, const std::array<int, 2> p1, const std::array<int, 2> p2,
+const double p0_depth, const double p1_depth, const double p2_depth, 
+const double h0, const double h1, const double h2, 
+ const std::array<int, 3>& color, const Texture* texture,
+ const std::array<int, 2> uv0, const std::array<int, 2> uv1, const std::array<int, 2> uv2
+ ) const
+{
+	std::vector<Pixel*> result;
+	std::array<int, 2> p0_new = p0;
+	std::array<int, 2> p1_new = p1;
+	std::array<int, 2> p2_new = p2;
+	double p0_depth_new = p0_depth;
+	double p1_depth_new = p1_depth;
+	double p2_depth_new = p2_depth;
+	double h0_new = h0;
+	double h1_new = h1;
+	double h2_new = h2;
+	std::array<int, 2> uv0_new = uv0;
+	std::array<int, 2> uv1_new = uv1;
+	std::array<int, 2> uv2_new = uv2;
+
+	if (p0_new[1] > p1_new[1])
+	{
+		std::swap(p0_new, p1_new);
+		std::swap(h0_new, h1_new);
+		std::swap(p0_depth_new, p1_depth_new);
+		std::swap(uv0_new, uv1_new);
+	}
+	if (p0_new[1] > p2_new[1])
+	{
+		std::swap(p0_new, p2_new);
+		std::swap(h0_new, h2_new);
+		std::swap(p0_depth_new, p2_depth_new);
+		std::swap(uv0_new, uv2_new);
+	}
+	if (p1_new[1] > p2_new[1])
+	{
+		std::swap(p1_new, p2_new);
+		std::swap(h1_new, h2_new);
+		std::swap(p1_depth_new, p2_depth_new);
+		std::swap(uv1_new, uv2_new);
+	}
+	auto xListLow = Interpolate(p0_new[1], p0_new[0], p2_new[1], p2_new[0]);
+	auto hListLow = Interpolate(p0_new[1], h0_new, p2_new[1], h2_new);
+	auto reciprocalDepthListLow = Interpolate(p0_new[1], 1/p0_depth_new, p2_new[1], 1/p2_depth_new);
+	auto uListLow = Interpolate(p0_new[1], uv0_new[0]/p0_depth_new, p2_new[1], uv2_new[0]/p2_depth_new);
+	auto vListLow = Interpolate(p0_new[1], uv0_new[1]/p0_depth_new, p2_new[1], uv2_new[1]/p2_depth_new);
+
+	auto xListHigher = Interpolate(p1_new[1], p1_new[0], p2_new[1], p2_new[0]);
+	auto hListHigher = Interpolate(p1_new[1], h1_new, p2_new[1], h2_new);
+	auto reciprocalDepthListHigher = Interpolate(p1_new[1], 1/p1_depth_new, p2_new[1], 1/p2_depth_new);
+	auto uListHigher = Interpolate(p1_new[1], uv1_new[0]/p1_depth_new, p2_new[1], uv2_new[0]/p2_depth_new);
+	auto vListHigher = Interpolate(p1_new[1], uv1_new[1]/p1_depth_new, p2_new[1], uv2_new[1]/p2_depth_new);
+	
+
+	auto xListHighest = Interpolate(p0_new[1], p0_new[0], p1_new[1], p1_new[0]);
+	auto hListHighest = Interpolate(p0_new[1], h0_new, p1_new[1], h1_new);
+	auto reciprocalDepthListHighest = Interpolate(p0_new[1], 1/p0_depth_new, p1_new[1], 1/p1_depth_new);
+	auto uListHighest = Interpolate(p0_new[1], uv0_new[0]/p0_depth_new, p1_new[1], uv1_new[0]/p1_depth_new);
+	auto vListHighest = Interpolate(p0_new[1], uv0_new[1]/p0_depth_new, p1_new[1], uv1_new[1]/p1_depth_new);
+
+	for (int y = p0_new[1]; y <= p2_new[1]; y++)
+	{
+		auto xOnEdge1 = xListLow[y - p0_new[1]];
+		auto hOnEdge1 = hListLow[y - p0_new[1]];
+		auto reciprocalDepthOnEdge1 = reciprocalDepthListLow[y - p0_new[1]];
+		auto uOnEdge1 = uListLow[y - p0_new[1]];
+		auto vOnEdge1 = vListLow[y - p0_new[1]];
+
+		double hOnEdge2;
+		double reciprocalDepthOnEdge2;
+		double uOnEdge2;
+		double vOnEdge2;
+
+		std::array<int, 2> pOnEdge1 = { xOnEdge1,y };
+		std::array<int, 2> pOnEdge2;
+		if (y < p1_new[1])
+		{
+			hOnEdge2 = hListHighest[y - p0_new[1]];
+			pOnEdge2 = { (int)xListHighest[y - p0_new[1]],y };
+			reciprocalDepthOnEdge2 = reciprocalDepthListHighest[y - p0_new[1]];
+			uOnEdge2 = uListHighest[y - p0_new[1]];
+			vOnEdge2 = vListHighest[y - p0_new[1]];
+		}
+		else {
+			hOnEdge2 = hListHigher[y - p1_new[1]];
+			pOnEdge2 = { (int)xListHigher[y - p1_new[1]],y };
+			reciprocalDepthOnEdge2 = reciprocalDepthListHigher[y - p1_new[1]];
+			uOnEdge2 = uListHigher[y - p1_new[1]];
+			vOnEdge2 = vListHigher[y - p1_new[1]];
+		}
+		if (pOnEdge1[0] > pOnEdge2[0])
+		{
+			std::swap(pOnEdge1, pOnEdge2);
+			std::swap(hOnEdge1, hOnEdge2);
+			std::swap(reciprocalDepthOnEdge1, reciprocalDepthOnEdge2);
+			std::swap(uOnEdge1, uOnEdge2);
+			std::swap(vOnEdge1, vOnEdge2);
+		}
+		auto hListHorizontal = Interpolate(pOnEdge1[0], hOnEdge1, pOnEdge2[0], hOnEdge2);
+		auto reciprocalDepthListHorizontal = Interpolate(pOnEdge1[0], reciprocalDepthOnEdge1, pOnEdge2[0], reciprocalDepthOnEdge2);
+		auto uListHorizontal = Interpolate(pOnEdge1[0], uOnEdge1, pOnEdge2[0], uOnEdge2);
+		auto vListHorizontal = Interpolate(pOnEdge1[0], vOnEdge1, pOnEdge2[0], vOnEdge2);
+		for (int x = pOnEdge1[0]; x <= pOnEdge2[0]; x++)
+		{
+			auto h = hListHorizontal[x - pOnEdge1[0]];
+			auto reciprocalDepth = reciprocalDepthListHorizontal[x - pOnEdge1[0]];
+			auto u = uListHorizontal[x - pOnEdge1[0]]/reciprocalDepth;
+			auto v = vListHorizontal[x - pOnEdge1[0]]/reciprocalDepth;
+			const auto textureColor = texture->GetPixel(u, v);
+
+			auto newColor = VectorHelper::ColorVectorScale(textureColor, h);
+			result.push_back(new Pixel(x, y, newColor, reciprocalDepth));
 		}
 
 	}
@@ -370,7 +494,7 @@ void RasterizationRender::RunRender()
 	{
 		const auto& position = pixel->GetPosition();
 		const auto& color = pixel->GetColor();
-		if (CompareAndSetDepthBuffer(position, pixel->GetDepth()))
+		if (CompareAndSetDepthBuffer(position, pixel->GetReciprocalDepth()))
 		{
 			canvas->PutPixel( position[0], position[1], RGB(color[0], color[1], color[2]));
 		}
@@ -416,7 +540,18 @@ std::vector<Pixel*> RasterizationRender::RenderInstance(const ModelInstance& ins
 		const auto h1 = triangle->GetH1();
 		const auto h2 = triangle->GetH2();
 
-		auto pixels = DrawShadedTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor());
+		std::vector<Pixel*> pixels;
+		if (triangle->GetTexture() != nullptr)
+		{
+			const auto uv0 = triangle->GetTextureUV0();
+			const auto uv1 = triangle->GetTextureUV1();
+			const auto uv2 = triangle->GetTextureUV2();
+			pixels = DrawShadedTextureTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor(), triangle->GetTexture(), uv0, uv1, uv2);
+		}
+		else
+		{
+			pixels = DrawShadedTriangle(p0, p1, p2, depth0, depth1, depth2, h0, h1, h2, triangle->GetColor());
+		}
 		for (auto pixel : pixels)
 		{
 			if (pixel->GetPosition()[0] >= 0 && pixel->GetPosition()[0] <= canvas->getCanvasWidth() && pixel->GetPosition()[1] >= 0 && pixel->GetPosition()[1] <= canvas->getCanvasHeight())
@@ -529,6 +664,10 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 	const double d0 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV0(), plane);
 	const double d1 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV1(), plane);
 	const double d2 = VectorHelper::GetSingnedVertexToPlaneDistance(triangle->GetV2(), plane);
+	const auto texture = triangle->GetTexture();
+	const auto uv0 = triangle->GetTextureUV0();
+	const auto uv1 = triangle->GetTextureUV1();
+	const auto uv2 = triangle->GetTextureUV2();
 	if (d0 >=0 && d1 >= 0 && d2 >= 0)
 	{
 		return { new Triangle(*triangle) };
@@ -545,7 +684,8 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 		auto h0 = triangle->GetH0();
 		auto newHB = h0 + pointNewBAndT.second*(triangle->GetH1() - h0);
 		auto newHC = h0 + pointNewCAndT.second*(triangle->GetH2() - h0);
-		return { new Triangle(triangle->GetV0(), pointNewBAndT.first, pointNewCAndT.first, triangle->GetColor(), h0, newHB, newHC)};
+
+		return { new Triangle(triangle->GetV0(), pointNewBAndT.first, pointNewCAndT.first, triangle->GetColor(), texture, uv0, uv1, uv2, h0, newHB, newHC)};
 	} else if (d0 < 0 && d1 > 0 && d2 < 0){
 		auto pointNewAAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV2());
 		auto pointNewCAndT = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV0());
@@ -553,14 +693,14 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 		auto newHA = h1 + pointNewAAndT.second*(triangle->GetH2() - h1);
 		auto newHC = h1 + pointNewCAndT.second*(triangle->GetH0() - h1);
 		
-		return { new Triangle(pointNewAAndT.first, triangle->GetV1(), pointNewCAndT.first, triangle->GetColor(), newHA, h1, newHC)};
+		return { new Triangle(pointNewAAndT.first, triangle->GetV1(), pointNewCAndT.first, triangle->GetColor(), texture, uv0, uv1, uv2, newHA, h1, newHC)};
 	} else if (d0 < 0 && d1 < 0 && d2 > 0){
 		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV0());
 		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV1());
 		auto h2 = triangle->GetH2();
 		auto newHA = h2 + pointNewA.second*(triangle->GetH0() - h2);
 		auto newHB = h2 + pointNewB.second*(triangle->GetH1() - h2);
-		return { new Triangle(pointNewA.first, pointNewB.first, triangle->GetV2(), triangle->GetColor(), newHA, newHB, h2)};
+		return { new Triangle(pointNewA.first, pointNewB.first, triangle->GetV2(), triangle->GetColor(), texture, uv0, uv1, uv2, newHA, newHB, h2)};
 	} else if (d0 < 0 && d1 > 0 && d2 > 0){
 		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV0());
 		auto pointNewC = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV0());
@@ -568,7 +708,7 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 		auto h2 = triangle->GetH2();
 		auto newHB = h1 + pointNewB.second*(triangle->GetH0() - h1);
 		auto newHC = h2 + pointNewC.second*(triangle->GetH0() - h2);
-		return { new Triangle(triangle->GetV1(), pointNewB.first, pointNewC.first, triangle->GetColor(), h1, newHB, newHC), new Triangle(triangle->GetV1(), triangle->GetV2(), pointNewC.first, triangle->GetColor(), h1, h2, newHC)};
+		return { new Triangle(triangle->GetV1(), pointNewB.first, pointNewC.first, triangle->GetColor(), texture, uv0, uv1, uv2, h1, newHB, newHC), new Triangle(triangle->GetV1(), triangle->GetV2(), pointNewC.first, triangle->GetColor(), texture, uv0, uv1, uv2, h1, h2, newHC)};
 	} else if (d0 > 0 && d1 < 0 && d2 > 0){
 		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV1());
 		auto pointNewC = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV2(), triangle->GetV1());
@@ -576,7 +716,7 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 		auto h2 = triangle->GetH2();
 		auto newHA = h0 + pointNewA.second*(triangle->GetH1() - h0);
 		auto newHC = h2 + pointNewC.second*(triangle->GetH1() - h2);
-		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewC.first, triangle->GetColor(), h0, newHA, newHC), new Triangle(triangle->GetV2(), triangle->GetV0(), pointNewC.first, triangle->GetColor(), h2, h0, newHC)};
+		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewC.first, triangle->GetColor(), texture, uv0, uv1, uv2, h0, newHA, newHC), new Triangle(triangle->GetV2(), triangle->GetV0(), pointNewC.first, triangle->GetColor(), texture, uv0, uv1, uv2, h2, h0, newHC)};
 	} else if (d0 > 0 && d1 > 0 && d2 < 0){
 		auto pointNewA = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV0(), triangle->GetV2());
 		auto pointNewB = VectorHelper::GetPlaneLineIntersection(plane, triangle->GetV1(), triangle->GetV2());
@@ -584,7 +724,7 @@ std::vector<Triangle*>  RasterizationRender::ClipTriangleAgainstPlane(const Tria
 		auto h1 = triangle->GetH1();
 		auto newHA = h0 + pointNewA.second*(triangle->GetH1() - h0);
 		auto newHB = h1 + pointNewB.second*(triangle->GetH1() - h1);
-		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewB.first, triangle->GetColor(), h0, newHA, newHB), new Triangle(triangle->GetV1(), triangle->GetV0(), pointNewB.first, triangle->GetColor(), h1, h0, newHB)};
+		return { new Triangle(triangle->GetV0(), pointNewA.first, pointNewB.first, triangle->GetColor(), texture, uv0, uv1, uv2, h0, newHA, newHB), new Triangle(triangle->GetV1(), triangle->GetV0(), pointNewB.first, triangle->GetColor(), texture, uv0, uv1, uv2, h1, h0, newHB)};
 	}
 	throw std::runtime_error("Triangle can not be clipped.");
 }
@@ -627,7 +767,11 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 		const auto normal0 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal0()), matrix_model_camera));
 		const auto normal1 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal1()), matrix_model_camera));
 		const auto normal2 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal2()), matrix_model_camera));
-		const auto newTriangle = new Triangle(v0, v1, v2, normal0, normal1, normal2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
+		const auto texture = triangle->GetTexture();
+		const auto uv0 = triangle->GetTextureUV0();
+		const auto uv1 = triangle->GetTextureUV1();
+		const auto uv2 = triangle->GetTextureUV2();
+		const auto newTriangle = new Triangle(v0, v1, v2, normal0, normal1, normal2, triangle->GetColor(), texture, uv0, uv1, uv2, triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
 		if (IsBackTriangle(newTriangle, matrix_model_camera))
 		{
 			delete newTriangle;
@@ -662,11 +806,11 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 }
 
 
-bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double depth)
+bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double reciprocalDepth)
 {
-	if (depthBuffer[point[0]][point[1]] < 1/depth)
+	if (depthBuffer[point[0]][point[1]] < reciprocalDepth)
 	{
-		depthBuffer[point[0]][point[1]] = 1/depth;
+		depthBuffer[point[0]][point[1]] = reciprocalDepth;
 		return true;
 	}
 	return false;
