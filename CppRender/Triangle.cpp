@@ -17,12 +17,15 @@ Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v
 }
 
 Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2,
-                   const std::array<int, 3> color, const double h0, const double h1, const double h2,
-                   const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2)
-    : v0(v0), v1(v1), v2(v2), color(color), h0(h0), h1(h1), h2(h2), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2))
+                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color)
+    : v0(v0), v1(v1), v2(v2), h0(1), h1(1), h2(1), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color)
 {
 }
-
+Triangle::Triangle(const std::array<double, 3> v0, const std::array<double, 3> v1, const std::array<double, 3> v2,
+                  const std::array<double, 3> normal0, const std::array<double, 3> normal1, const std::array<double, 3> normal2, const std::array<int, 3> color, const double h0, const double h1, const double h2)
+    : v0(v0), v1(v1), v2(v2), h0(h0), h1(h1), h2(h2), normal0(normal0), normal1(normal1), normal2(normal2), normal(VectorHelper::GetNormal(v0, v1, v2)), color(color)
+{
+}
 Triangle::Triangle(const Triangle& other)
     : v0(other.v0), v1(other.v1), v2(other.v2), color(other.color), h0(other.h0), h1(other.h1), h2(other.h2), normal(other.normal), normal0(other.normal0), normal1(other.normal1), normal2(other.normal2)
 {

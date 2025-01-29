@@ -463,6 +463,7 @@ var ComputeTriangleNormal = function(v0, v1, v2) {
 
 
 var ComputeIllumination = function(vertex, normal, camera, lights) {
+  normal = Multiply(1/Magnitude(normal),normal);
   var illumination = 0;
   for (var l = 0; l < lights.length; l++) {
     var light = lights[l];
@@ -493,7 +494,7 @@ var ComputeIllumination = function(vertex, normal, camera, lights) {
     // Specular component.
     if (LightingModel & LM_SPECULAR) {
       var reflected = Add(Multiply(2*Dot(normal, vl), normal), Multiply(-1, vl));
-      var view = Add(camera.position, Multiply(-1, vertex));
+      var view = Add({x:0,y:0,z:0}, Multiply(-1, vertex));
 
       var cos_beta = Dot(reflected, view) / (Magnitude(reflected) * Magnitude(view));
       if (cos_beta > 0) {

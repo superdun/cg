@@ -43,7 +43,7 @@ void RasterizationRender::ClearDepthBuffer()
 
 double RasterizationRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
 {
-	//ÊéÉÏ´Ë´¦´úÂëÓĞ´í£¬²»Ó¦´ÓÉãÏñ»úµ±Ç°Î»ÖÃ¼ÆËã£¬ÒòÎªÒÑ¾­¾­¹ıÁË×ø±ê±ä»»
+	//ä¹¦ä¸Šæ­¤å¤„ä»£ç æœ‰é”™ï¼Œä¸åº”ä»æ‘„åƒæœºå½“å‰ä½ç½®è®¡ç®—ï¼Œå› ä¸ºå·²ç»ç»è¿‡äº†åæ ‡å˜æ¢
 	const std::array<double, 3> surfaceToCameraVector = VectorHelper::VectorSub({0,0,0}, surfacePoint);
     double lightIntensityScale = 0;
 	
@@ -92,7 +92,7 @@ double RasterizationRender::DiffuseReflectionScale(const std::array<double, 3>& 
 }
 double RasterizationRender::SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const
 {
-	//ÊéÉÏ´Ë´¦´úÂëÓĞ´í£¬¼ÆËã·´Éä¹âÓ¦¸ÃÊÇµ¥Î»·¨ÏòÁ¿£¬ÊéÖĞ´úÂëÃ»ÓĞ¹éÒ»»¯
+	//ä¹¦ä¸Šæ­¤å¤„ä»£ç æœ‰é”™ï¼Œè®¡ç®—åå°„å…‰ä½¿ç”¨å•ä½æ³•å‘é‡
 	const std::array<double, 3> reflectRay = VectorHelper::GetReflectVector(originRay, normalVector);
 	const auto cos = VectorHelper::GetCosBetweenVectors(reflectRay, surfaceToCameraRay);
 	auto pw = std::pow(cos, specular);
@@ -623,18 +623,30 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 		const auto v0 = calculatedPoints[Utils::ArrayToString(triangle->GetV0())];
 		const auto v1 = calculatedPoints[Utils::ArrayToString(triangle->GetV1())];
 		const auto v2 = calculatedPoints[Utils::ArrayToString(triangle->GetV2())];
-		const auto newTriangle = new Triangle(v0, v1, v2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
+
+		const auto normal0 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal0()), matrix_model_camera));
+		const auto normal1 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal1()), matrix_model_camera));
+		const auto normal2 = VectorHelper::Build3DPoint(VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousDirection(triangle->GetNormal2()), matrix_model_camera));
+		const auto newTriangle = new Triangle(v0, v1, v2, normal0, normal1, normal2, triangle->GetColor(), triangle->GetH0(), triangle->GetH1(), triangle->GetH2());
 		if (IsBackTriangle(newTriangle, matrix_model_camera))
 		{
 			delete newTriangle;
 			continue;
-		}
+		}	
 		//Gouraud Shading
-		const auto normal = newTriangle->GetNormal();
 		const auto cameraPosition = camera->GetPosition();
-		const auto h0 = GetLighteningScale(newTriangle->GetV0(), normal, 50);
-		const auto h1 = GetLighteningScale(newTriangle->GetV1(), normal, 50);
-		const auto h2 = GetLighteningScale(newTriangle->GetV2(), normal, 50);
+
+
+		////Computed triangle normals
+		//const auto h0 = GetLighteningScale(newTriangle->GetV0(), newTriangle->GetNormal(), 50);
+		//const auto h1 = GetLighteningScale(newTriangle->GetV1(), newTriangle->GetNormal(), 50);
+		//const auto h2 = GetLighteningScale(newTriangle->GetV2(), newTriangle->GetNormal(), 50);
+
+		
+		 //Vertex normals from model
+		const auto h0 = GetLighteningScale(newTriangle->GetV0(), normal0, 50);
+		const auto h1 = GetLighteningScale(newTriangle->GetV1(), normal1, 50);
+		const auto h2 = GetLighteningScale(newTriangle->GetV2(), normal2, 50);
 		newTriangle->SetH0(h0);
 		newTriangle->SetH1(h1);
 		newTriangle->SetH2(h2);
