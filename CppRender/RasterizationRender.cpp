@@ -4,6 +4,7 @@
 #include "VectorHelper.h"
 #include <unordered_map>
 #include "Utils.h"
+#include <future>
 
 
 RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<ModelInstance *> &instances, const Camera *camera, const std::array<Plane *, 5> &planes, const std::vector<const Light*>& lightList)
@@ -484,11 +485,21 @@ void RasterizationRender::RunRender()
 		}
 	}
 	
+	// 使用 std::async 来并行处理 RenderInstance
+	std::vector<std::future<std::vector<Pixel*>>> futures;
+
 	for (const auto& instance : clippedInstances)
 	{
-		auto tmpPixels = RenderInstance(*instance, matrix_camera);
-		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
+		futures.emplace_back(std::async(std::launch::async, [this, &instance, &matrix_camera]() {
+			return RenderInstance(*instance, matrix_camera);
+		}));
+	}
 
+	// 收集结果
+	for (auto& future : futures)
+	{
+		auto tmpPixels = future.get();
+		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
 	}
 	for (auto pixel : pixels)
 	{
