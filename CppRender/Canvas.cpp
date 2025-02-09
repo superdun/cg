@@ -17,10 +17,24 @@ void Canvas::resetCanvas() const
     DeleteObject(brush);
 }
 
+HBITMAP& Canvas::GetHBitmap()
+{
+	return hBitmap;
+}
+
 
 void Canvas::PutPixel(const int x,const int y ,const COLORREF& color) const
 {
-    SetPixel(hMemDC, x, y, color);
+    if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) return;
+
+    // Calculate the pixel index (assuming 32 bits per pixel)
+    int index = (y * canvasWidth + x) * 4; // 4 bytes per pixel for 32-bit
+
+    // Set the pixel color (BGRA format for 32-bit)
+    ((BYTE*)pixelData)[index + 0] = GetBValue(color); // Blue
+    ((BYTE*)pixelData)[index + 1] = GetGValue(color); // Green
+    ((BYTE*)pixelData)[index + 2] = GetRValue(color); // Red
+    ((BYTE*)pixelData)[index + 3] = 255;              // Alpha (opaque)
 }
 
 
@@ -34,10 +48,41 @@ Canvas::Canvas(const HDC& hMemDC, const int canvasWidth, const int canvasHeight,
     canvasViewportWidthRate(canvasWidth / viewportWidth), canvasViewportHeightRate(canvasHeight / viewportHeight)
 
 {
+    // Define the BITMAPINFO structure
+    BITMAPINFO bitmapInfo;
+    ZeroMemory(&bitmapInfo, sizeof(BITMAPINFO));
+    bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmapInfo.bmiHeader.biWidth = canvasWidth;
+    bitmapInfo.bmiHeader.biHeight = -canvasHeight;  // Negative height for top-down bitmap
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biBitCount = 32;      // 32 bits per pixel (ARGB)
+    bitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    // Create a DIB section
+    hBitmap = CreateDIBSection(hMemDC, &bitmapInfo, DIB_RGB_COLORS, &pixelData, NULL, 0);
+
+    // Check for errors
+    if (!hBitmap) {
+        // Handle errors here
+        throw std::runtime_error("Failed to create DIB section.");
+    }
+
+    // Optionally fill the pixelData with a default color (e.g., black)
+    memset(pixelData, 0xFF, canvasWidth * canvasHeight * 4); // Clear to black (for 32-bit)
+
+
 }
 
 Canvas::~Canvas()
 {
+    // Clean up
+	if (hBitmap) {
+		DeleteObject(hBitmap);
+	}
+	if (pixelData) {
+		// No need to delete pixelData; it's managed by the DIB section
+	}
+	//delete camera;
 }
 
 

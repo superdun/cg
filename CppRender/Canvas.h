@@ -30,6 +30,8 @@ private:
 	const HDC& hMemDC;
 
 	const Camera* camera;
+	HBITMAP hBitmap;
+	void* pixelData;
 	
 public:
 	Canvas(const HDC& hMemDC, const int canvasWidth,
@@ -59,5 +61,5 @@ public:
 	std::pair<std::array<int, 2>, double> ConvertPointToCanvasCoordinateWithDepth(const std::array<double, 3>& positionWithDepth) const;
 	void PutPixel(const int x, const int y, const COLORREF& color) const;
 	void resetCanvas() const;
-
+	HBITMAP& GetHBitmap();
 };

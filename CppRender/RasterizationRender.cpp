@@ -26,10 +26,12 @@ void RasterizationRender::InitDepthBuffer()
 {
 	if (canvas != nullptr)
 	{
-		depthBuffer = std::vector<std::vector<double>>(canvas->getCanvasWidth()+1, std::vector<double>(canvas->getCanvasHeight()+1, 0));
-		for (int i = 0; i < canvas->getCanvasWidth(); i++)
+		int width = canvas->getCanvasWidth();
+		int height = canvas->getCanvasHeight();
+		depthBuffer = std::vector<std::vector<double>>(width +1, std::vector<double>(height+1, 0));
+		for (int i = 0; i < width; i++)
 		{
-			for (int j = 0; j < canvas->getCanvasHeight(); j++)
+			for (int j = 0; j < height; j++)
 			{
 				depthBuffer[i][j] = 0;
 			}
@@ -819,9 +821,10 @@ ModelInstance* RasterizationRender::CreateNewInstance(const ModelInstance* insta
 
 bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double reciprocalDepth)
 {
-	if (depthBuffer[point[0]][point[1]] < reciprocalDepth)
+	double& currentDepth = depthBuffer[point[0]][point[1]];
+	if (currentDepth < reciprocalDepth)
 	{
-		depthBuffer[point[0]][point[1]] = reciprocalDepth;
+		currentDepth = reciprocalDepth;
 		return true;
 	}
 	return false;

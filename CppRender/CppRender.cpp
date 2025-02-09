@@ -16,7 +16,7 @@
 #include "Plane.h"
 #define MAX_LOADSTRING 100
 #define TIMER_ID 1
-#define TIMER_INTERVAL 160
+#define TIMER_INTERVAL 10
 // 全局变量:
 HINSTANCE hInst;                     // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];       // 标题栏文本
@@ -92,7 +92,7 @@ const std::vector<const Light *> lightList2 = {
 
 };
 
-const Texture* texture = new Texture("C:\\Users\\lidad\\repos\\cg\\CppRender\\crate-texture.jpg");
+const Texture* texture = new Texture(".\\crate-texture.jpg");
 
 const std::vector<std::array<double, 3>> vertexes = {
     {{1, 1, 1}},
@@ -292,36 +292,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             auto frameStart = std::chrono::high_resolution_clock::now();
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            hBitmap = NULL;
-            if (hBitmap == NULL)
-            {
-                hBitmap = CreateBitmap(width, height, 1, 32, NULL);
-                HDC hMemDC = CreateCompatibleDC(hdc);
-                hBitmap = CreateBitmap(width, height, 1, 32, NULL);
-                SelectObject(hMemDC, hBitmap);
 
-                Canvas *canvas = new Canvas(hMemDC, width, height, camera);
-                transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
-                transform2->SetRotateState({ 1/sqrt(2),1/sqrt(2),0}, transform2->GetAngle() + 0.2);
-                // camera->Forward();
+            HDC hMemDC = CreateCompatibleDC(hdc);
+            SelectObject(hMemDC, hBitmap);
 
-                // rayTraceRender->SetCanvas(canvas);
-                //  rayTraceRender->RunRender();
+            Canvas* canvas = new Canvas(hMemDC, width, height, camera);
 
-                rasterizationRender->SetCanvas(canvas);
-                rasterizationRender->RunRender();
+            transform1->SetRotateState({ 0,1,0 }, transform1->GetAngle() + 0.1);
+            transform2->SetRotateState({ 1 / sqrt(2),1 / sqrt(2),0 }, transform2->GetAngle() + 0.2);
+            // camera->Forward();
 
-                // delete camera;
-                // delete render;
-                // delete canvas;
-                DeleteDC(hMemDC);
-                delete canvas;
-            }
+            // rayTraceRender->SetCanvas(canvas);
+            //  rayTraceRender->RunRender();
 
+            rasterizationRender->SetCanvas(canvas);
+            rasterizationRender->RunRender();
+
+            // delete camera;
+            // delete render;
+            // delete canvas;
+            DeleteDC(hMemDC);
+            auto hbm = canvas->GetHBitmap();
             HDC hdcMem = CreateCompatibleDC(hdc);
-            SelectObject(hdcMem, hBitmap);
+            SelectObject(hdcMem, hbm);
             BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
             DeleteDC(hdcMem);
+            delete canvas;
             EndPaint(hWnd, &ps);
             auto frameEnd = std::chrono::high_resolution_clock::now();
 
