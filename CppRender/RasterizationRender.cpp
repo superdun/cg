@@ -11,6 +11,7 @@ RasterizationRender::RasterizationRender(Canvas *canvas, const std::vector<Model
     : instances(instances), canvas(canvas), camera(camera), planes(planes), originalLightList(lightList)
 {
 	InitDepthBuffer();
+	InitShadowMappingBuffer();
 }
 
 
@@ -39,9 +40,31 @@ void RasterizationRender::InitDepthBuffer()
 	}
 }
 
+void RasterizationRender::InitShadowMappingBuffer()
+{
+	if (canvas != nullptr)
+	{
+		int width = canvas->getCanvasWidth();
+		int height = canvas->getCanvasHeight();
+		shadowMappingBuffer = std::vector<std::vector<double>>(width +1, std::vector<double>(height+1, 0));
+		for (int i = 0; i < width; i++)
+		{
+			for (int j = 0; j < height; j++)
+			{
+				shadowMappingBuffer[i][j] = 0;	
+			}
+		}
+	}	
+}
+
 void RasterizationRender::ClearDepthBuffer()
 {
 	InitDepthBuffer();
+}
+
+void RasterizationRender::ClearShadowMappingBuffer()
+{
+	InitShadowMappingBuffer();
 }
 
 double RasterizationRender::GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const
@@ -461,6 +484,7 @@ std::array<double, 2> RasterizationRender::ProjectVertex(const std::array<double
 void RasterizationRender::RunRender()
 {
 	canvas->resetCanvas();
+	ClearShadowMappingBuffer();
 	std::vector<const ModelInstance*> clippedInstances;
 	std::vector<Pixel*> pixels;
 	const auto matrix_camera = VectorHelper::MatrixMultiply(
@@ -503,6 +527,12 @@ void RasterizationRender::RunRender()
 		auto tmpPixels = future.get();
 		pixels.insert(pixels.end(), tmpPixels.begin(), tmpPixels.end());
 	}
+
+    for (const auto& light : lightList)
+    {
+        ComputeShadowMapping(light);
+    }
+
 	for (auto pixel : pixels)
 	{
 		const auto& position = pixel->GetPosition();
@@ -828,6 +858,48 @@ bool RasterizationRender::CompareAndSetDepthBuffer(const std::array<int, 2>& poi
 		return true;
 	}
 	return false;
+}
+
+bool RasterizationRender::CompareAndSetShadowBuffer(const std::array<int, 2>& point, const double reciprocalDepth){
+	double& currentDepth = shadowBuffer[point[0]][point[1]];
+	if (currentDepth < reciprocalDepth)
+	{
+		currentDepth = reciprocalDepth;
+		return true;
+	}
+	return false;
+}
+
+void RasterizationRender::ComputeShadowMapping(const Light* light){
+// 获取光源的位置
+    const auto lightPosition = light->GetPosition();
+    
+    // 遍历场景中的每个物体
+    for (const auto& instance : instances)
+    {
+        const auto clippedInstance = ClipInstance(instance, lightPosition);
+        if (clippedInstance != nullptr)
+        {
+            // 遍历物体的每个三角形
+            for (const auto& triangle : clippedInstance->GetTriangles())
+            {
+                // 计算三角形的投影到光源的视图
+                for (const auto& vertex : { triangle->GetV0(), triangle->GetV1(), triangle->GetV2() })
+                {
+                    // 将顶点转换为光源空间
+                    auto projectedVertex = VectorHelper::VerticeMatrixMultiply(VectorHelper::BuildHomogeneousPoint(vertex), light->GetViewMatrix());
+                    int x = static_cast<int>(projectedVertex[0]);
+                    int y = static_cast<int>(projectedVertex[1]);
+
+                    // 更新阴影映射缓冲区
+                    if (x >= 0 && x < shadowMappingBuffer.size() && y >= 0 && y < shadowMappingBuffer[0].size())
+                    {
+                        shadowMappingBuffer[x][y] = std::max(shadowMappingBuffer[x][y], projectedVertex[2]); // 更新深度
+                    }
+                }
+            }
+        }
+    }
 }
 
 const std::vector<Light*> RasterizationRender::GetLightList() const

@@ -17,6 +17,7 @@ private:
 	std::vector<Light*> lightList;
 	const std::array<Plane*, 5> planes;
 	std::vector<std::vector<double>> depthBuffer;
+	std::vector<std::vector<double>> shadowMappingBuffer;
 	void ClipPipeline();
 	ModelInstance* ClipInstance( ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	ModelInstance* ClipInstanceAgainstPlane( ModelInstance* instance,  const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
@@ -25,11 +26,15 @@ private:
 	std::vector<Triangle*>  ClipTriangleAgainstPlane(const Triangle* triangle, const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	ModelInstance* CreateNewInstance(const ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	void InitDepthBuffer();
+	void InitShadowMappingBuffer();
 	void ClearDepthBuffer();
+	void ClearShadowMappingBuffer();
 	double GetLighteningScale(const std::array<double, 3>& surfacePoint, const std::array<double, 3>& normalVector, const double& specular) const;
 	double DiffuseReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& normalVector) const;
 	double SpecularReflectionScale(const std::array<double, 3>& originRay, const std::array<double, 3>& surfaceToCameraRay, const std::array<double, 3>& normalVector, const double& specular) const;
 	bool CompareAndSetDepthBuffer(const std::array<int, 2>& point, const double reciprocalDepth);
+	bool CompareAndSetShadowMappingBuffer(const std::array<int, 2>& point, const double reciprocalDepth);
+	void ComputeShadowMapping(const Light* light);
 public:
 	RasterizationRender(Canvas* canvas, const std::vector<ModelInstance*>& instances, const Camera* camera, const std::array<Plane*, 5>& planes, const std::vector<const Light*>& lightList);
 	~RasterizationRender();
