@@ -87,8 +87,8 @@ const std::vector<const Light *> lightList = {
 
 const std::vector<const Light *> lightList2 = {
     new Light(LightTypeEnum::AmbientLight, {0, 0, 0}, {0, 0, 0}, 0.2),
-    new Light(LightTypeEnum::DirectionalLight, {0, 0, 0}, {-1, 0, 1}, 0.2),
-    new Light(LightTypeEnum::PointLight, {3, 2, -10}, {0, 0, 0}, 0.6),
+    new Light(LightTypeEnum::DirectionalLight, {0, 0, 0}, {1, 1, -1}, 0.4),
+    new Light(LightTypeEnum::PointLight, {3, 2, -10}, {0, 0, 0}, 0.4),
 
 };
 

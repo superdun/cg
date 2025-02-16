@@ -24,6 +24,7 @@ public:
     static std::array< std::array<double, 4>, 4> Build4DScaleMatrix(const std::array<double, 3>& scale);
     static std::array< std::array<double, 4>, 4> Build4DRotationMatrix(const double angle, const std::array<double, 3>& axis);
     static std::array< std::array<double, 4>, 4> Build4DRotateInverseMatrix(const double angle, const std::array<double, 3>& axis);
+    static std::array< std::array<double, 4>, 4> Build4DRotateInverseMatrix(const std::array<double, 3>& direction);
     static std::array< std::array<double, 4>, 4> Build4DTranslationMatrix(const std::array<double, 3>& translation);
     static std::array< std::array<double, 4>, 4> Build4DInverseTranslationMatrix(const std::array<double, 3>& translation);
     static std::array< std::array<double, 4>, 4> Build4DProjectionViewportToCanvasMatrix(const double viewportDistance, const double canvasWidth, const double canvasHeight, const double viewportWidth, const double viewportHeight);

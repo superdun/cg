@@ -17,6 +17,7 @@ private:
 	std::vector<Light*> lightList;
 	const std::array<Plane*, 5> planes;
 	std::vector<std::vector<double>> depthBuffer;
+
 	void ClipPipeline();
 	ModelInstance* ClipInstance( ModelInstance* instance, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
 	ModelInstance* ClipInstanceAgainstPlane( ModelInstance* instance,  const Plane* plane, const std::array< std::array<double, 4>, 4>& matrix_model_camera);
@@ -48,7 +49,8 @@ public:
 	  ) const;
 	std::array<double, 2> ProjectVertex(const std::array<double, 3>& vertex, const double d, const std::array<double, 3>& modelPosition) const;
 	std::vector<Pixel*> RenderInstance(const ModelInstance& model, const std::array< std::array<double, 4>, 4>& matrix_camera) const;
-	void RunRender();			
+	void RunRender();	
+	std::vector<std::vector<double>> GetShadowMapBuffer();
 	void SetCanvas(Canvas* canvas);
 	
 	const std::vector<Light*> GetLightList() const;

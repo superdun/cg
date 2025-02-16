@@ -156,6 +156,12 @@ std::array< std::array<double, 4>, 4> VectorHelper::Build4DRotateInverseMatrix(c
 
 }
 
+std::array< std::array<double, 4>, 4> VectorHelper::Build4DRotateInverseMatrix(const std::array<double, 3>& direction)
+{
+    const auto angle = VectorHelper::AngleOfVectors(direction, {0, 0, 1});
+    return VectorHelper::Build4DRotateInverseMatrix(angle, direction);
+}
+
 std::array< std::array<double, 4>, 4> VectorHelper::Build4DTranslationMatrix(const std::array<double, 3>& translation)
 {
     std::array<std::array<double, 4>, 4> matrix = { {
