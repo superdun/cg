@@ -1,0 +1,28 @@
+# Visual Studio
+.vs/
+*.user
+*.sln.ide
+*.suo
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.exe
+*.dll
+*.pdb
+*.lib
+*.obj
+
+# Visual Studio Code
+.vscode/
+
+# Others
+*.log
+*.ncb
+*.sdf
+*.opensdf
+*.suo
+*.userprefs
+*.tmp
