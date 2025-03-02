@@ -2,6 +2,8 @@
 #ifndef VECTORHELPER_H
 #define VECTORHELPER_H
 
+#include <DirectXMath.h>
+#include <DirectXPackedVector.h>
 #include <array>
 #include <cmath> 
 #include "Plane.h"
