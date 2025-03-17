@@ -46,5 +46,8 @@ int Test167()
 	cout << "v=" << v << endl;
 	cout << "w=" << w << endl;
 	cout << "w=" << v*w << endl;
+	cout << XMConvertToRadians(180.0f) << endl;
+	cout << XMConvertToDegrees(XM_PI) << endl;
+	cout << XMVector3AngleBetweenVectors(XMVectorSet(1.0f,0,0,0), XMVectorSet(0,1.0f, 0, 0)) << endl;
 	return 0;	
 }

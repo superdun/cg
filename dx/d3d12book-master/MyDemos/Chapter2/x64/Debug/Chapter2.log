@@ -1,0 +1,6 @@
+﻿  Chapter2.cpp
+C:\repos\cg\dx\d3d12book-master\MyDemos\Chapter2\Chapter2.cpp(38,9): warning C4551: 缺少参数列表的函数调用
+C:\repos\cg\dx\d3d12book-master\MyDemos\Chapter2\Chapter2.cpp(107,11): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\repos\cg\dx\d3d12book-master\MyDemos\Chapter2\Chapter2.cpp(121,11): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+C:\repos\cg\dx\d3d12book-master\MyDemos\Chapter2\Chapter2.cpp(139,11): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+  Chapter2.vcxproj -> C:\repos\cg\dx\d3d12book-master\MyDemos\Chapter1\x64\Debug\Chapter2.exe
