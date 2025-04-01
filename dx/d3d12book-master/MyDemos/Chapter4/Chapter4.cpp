@@ -5,7 +5,7 @@
 #include <DirectXPackedVector.h>
 #include <vector>
 #include <d3d12.h>
-#include <d3dUtil.h>
+
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 using namespace std;

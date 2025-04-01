@@ -15,7 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Chapter4.cpp">
+    <ClInclude Include="framework.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Chapter4-Window.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DApp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DUtil.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="GameTimer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Chapter4-Window.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="D3DApp.cpp">
@@ -24,13 +47,21 @@
     <ClCompile Include="D3DUtil.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="GameTimer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="D3DApp.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="D3DUtil.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
+    <ResourceCompile Include="Chapter4-Window.rc">
+      <Filter>资源文件</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="Chapter4-Window.ico">
+      <Filter>资源文件</Filter>
+    </Image>
   </ItemGroup>
 </Project>
