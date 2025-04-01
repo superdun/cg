@@ -15,7 +15,13 @@ GameTimer::~GameTimer()
 
 float GameTimer::TotalTime() const
 {
-	return 0.0f;
+	if (mStopped)
+	{
+		return (float)(mStopTime - mPausedTime - mBaseTime)*mSecondsPerCount;
+	}
+	else {
+		return (float)(mCurrTime - mPausedTime - mBaseTime) * mSecondsPerCount;
+	}
 }
 
 float GameTimer::DeltaTime() const
@@ -35,11 +41,27 @@ void GameTimer::Reset()
 
 void GameTimer::Start()
 {
+	__int64 startTime;
+	QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
+	if (mStopped)
+	{
+		mPausedTime += (startTime - mStopTime);
+		mPrevTime = startTime;
+		mStopTime = 0;
+		mStopped = false;
+	}
 
 }
 
 void GameTimer::Stop()
 {
+	if (!mStopped)
+	{
+		__int64 currentTime;
+		QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+		mStopTime = currentTime;
+		mStopped = true;
+	}
 }
 
 void GameTimer::Tick()
