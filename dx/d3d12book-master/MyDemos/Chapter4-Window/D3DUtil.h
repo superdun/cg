@@ -13,7 +13,17 @@
 #include <d3dcompiler.h>
 #include <wrl.h>
 #include <d3dx12.h>
-#include "D3DUtil.h"
+using Microsoft::WRL::ComPtr;
+
+class D3DUtil {
+public:
+    static Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(
+        ID3D12Device* device,
+        ID3D12GraphicsCommandList* cmdList,
+        const void* initData,
+        UINT64 byteSize,
+        Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+};
 class DxException {
 public:
     DxException() = default;
@@ -26,6 +36,7 @@ public:
     std::wstring Filename;
     int LineNumber = -1;
 };
+
 
 inline std::wstring AnsiToWString(const std::string& str)
 {
