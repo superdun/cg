@@ -4,6 +4,7 @@
 #include "Chapter6.h"
 #include <DirectXColors.h>
 
+
 using namespace DirectX;
 
 struct Vertex
@@ -12,6 +13,10 @@ struct Vertex
     XMFLOAT4 Color;
 };
 
+struct ObjectConstants
+{
+    XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
+};
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
     PSTR cmdLine, int showCmd)
@@ -23,7 +28,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
     try
     {
-        InitDirect3DApp theApp(hInstance);
+        BoxApp theApp(hInstance);
         if (!theApp.Initialize())
             return 0;
 
@@ -52,6 +57,84 @@ bool BoxApp::Initialize()
     }
     return true;
 }
+
+void BoxApp::OnMouseMove(WPARAM btnState, int x, int y) {
+    if ((btnState & MK_LBUTTON)!=0)
+    {
+        float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
+		float dy = XMConvertToRadians(0.25f * static_cast<float>(y - mLastMousePos.y));
+		mTheta += dx;
+		mPhi += dy;
+		mPhi = MathHelper::Clamp(mPhi, 0.1f, XM_PI - 0.1f);
+	}
+	else if ((btnState & MK_RBUTTON) != 0)
+	{
+		float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
+		float dy = 0.005f * static_cast<float>(y - mLastMousePos.y);
+		mRadius += dx - dy;
+
+		mRadius = MathHelper::Clamp(mRadius, 3.0f, 15.0f);
+    }
+    mLastMousePos.x = x;
+	mLastMousePos.y = y;
+}
+void BoxApp::Update(const GameTimer& gt) {
+	float x = mRadius * sinf(mPhi) * cosf(mTheta);
+	float y = mRadius * cosf(mPhi) ;
+	float z = mRadius * sinf(mPhi) * sinf(mTheta);
+
+
+	XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
+	XMVECTOR target = XMVectorZero();
+	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    //摄像机矩阵
+	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+
+    //尤其在需要传递矩阵到 CPU 和 GPU 之间时，使用 XMFLOAT4X4 结构更方便，因为它是一个简单的可直接以浮点数组表示的结构。
+	XMStoreFloat4x4(&mView, view);
+
+
+    //世界矩阵
+    XMMATRIX world = XMLoadFloat4x4(&mWorld);
+
+	//投影矩阵
+	XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    XMMATRIX worldViewProj = world * view * proj;
+
+    ObjectConstants objConstants;
+    XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+	mObjectCB->CopyData(0, objConstants);
+}
+void BoxApp::BuildDescriptorHeaps()
+{
+    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
+    cbvHeapDesc.NumDescriptors = 1;
+    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    cbvHeapDesc.NodeMask = 0;
+    ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&cbvHeapDesc,
+        IID_PPV_ARGS(&mCbvHeap)));
+}
+void BoxApp::BuildConstantBuffers()
+{
+    mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
+
+    UINT objCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+
+    D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB->Resource()->GetGPUVirtualAddress();
+    // Offset to the ith object constant buffer in the buffer.
+    int boxCBufIndex = 0;
+    cbAddress += boxCBufIndex * objCBByteSize;
+
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+    cbvDesc.BufferLocation = cbAddress;
+    cbvDesc.SizeInBytes = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+
+    md3dDevice->CreateConstantBufferView(
+        &cbvDesc,
+        mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+}
 void BoxApp::BuildBoxGeometry()
 {
 	// 描述符->上传堆缓冲区->默认堆缓冲区->视图->slot->pipeline
@@ -66,21 +149,65 @@ void BoxApp::BuildBoxGeometry()
         { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) },
         { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) }
 	};
+    std::array<std::uint16_t, 36> indices =
+    {
+        // front face
+        0, 1, 2,
+        0, 2, 3,
+
+        // back face
+        4, 6, 5,
+        4, 7, 6,
+
+        // left face
+        4, 5, 1,
+        4, 1, 0,
+
+        // right face
+        3, 2, 6,
+        3, 6, 7,
+
+        // top face
+        1, 5, 6,
+        1, 6, 2,
+
+        // bottom face
+        4, 0, 3,
+        4, 3, 7
+    };
+
+
     const UINT64 vbByteSize = 8 * sizeof(Vertex);
+	const UINT64 ibByteSize = 36 * sizeof(std::uint16_t);
     ComPtr<ID3D12Resource> VertexBufferGpu = nullptr;
 	ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
+    ComPtr<ID3D12Resource> IndexBufferGpu = nullptr;
+    ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 	VertexBufferGpu = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), vertices, vbByteSize, VertexBufferUploader);
-     
+    IndexBufferGpu = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, IndexBufferUploader);
+
 	// Create the vertex buffer view.
 	D3D12_VERTEX_BUFFER_VIEW vbv;
 	vbv.BufferLocation = VertexBufferGpu->GetGPUVirtualAddress();
 	vbv.StrideInBytes = sizeof(Vertex);
 	vbv.SizeInBytes = vbByteSize;
+
+    // Create the index buffer view.
+    D3D12_INDEX_BUFFER_VIEW ibv;
+    ibv.BufferLocation = VertexBufferGpu->GetGPUVirtualAddress();
+    ibv.Format = DXGI_FORMAT_R16_UINT;
+    ibv.SizeInBytes = ibByteSize;
+
 	// Set the vertex buffer view in the command list.
-   
 	mCommandList->IASetVertexBuffers(0, 1, &vbv);
+
+
 	// Set the primitive topology.
 	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // Set the index buffer view in the command list.
+    mCommandList->IASetIndexBuffer(&ibv);
+
 }
 
 void BoxApp::OnResize()

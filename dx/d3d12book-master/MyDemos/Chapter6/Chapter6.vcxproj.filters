@@ -36,6 +36,12 @@
     <ClInclude Include="..\Chapter4-Window\GameTimer.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Chapter6.cpp">

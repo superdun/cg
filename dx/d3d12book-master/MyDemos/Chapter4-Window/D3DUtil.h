@@ -13,6 +13,7 @@
 #include <d3dcompiler.h>
 #include <wrl.h>
 #include <d3dx12.h>
+#include <array>
 using Microsoft::WRL::ComPtr;
 
 class D3DUtil {
@@ -23,6 +24,11 @@ public:
         const void* initData,
         UINT64 byteSize,
         Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+	static UINT CalcConstantBufferByteSize(UINT byteSize)
+	{
+        //这段代码 (byteSize + 255) & ~255 是一种常见的技巧，用于将 byteSize 向上对齐到最近的 256 字节边界
+		return (byteSize + 255) & ~255;
+	}
 };
 class DxException {
 public:

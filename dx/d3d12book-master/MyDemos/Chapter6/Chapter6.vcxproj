@@ -132,8 +132,10 @@
     <ClInclude Include="..\Chapter4-Window\GameTimer.h" />
     <ClInclude Include="Chapter6.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="MathHelper.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="UploadBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Chapter4-Window\D3DApp.cpp" />
