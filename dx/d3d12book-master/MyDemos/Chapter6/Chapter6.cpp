@@ -6,7 +6,6 @@
 
 
 using namespace DirectX;
-
 struct Vertex
 {
     XMFLOAT3 Pos;
@@ -17,6 +16,61 @@ struct ObjectConstants
 {
     XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 };
+
+class BoxApp : public D3DApp
+{
+public:
+    BoxApp(HINSTANCE hInstance);
+    BoxApp(const BoxApp& rhs) = delete;
+    BoxApp& operator=(const BoxApp& rhs) = delete;
+    ~BoxApp();
+
+    virtual bool Initialize()override;
+
+private:
+    virtual void OnResize()override;
+    virtual void Update(const GameTimer& gt)override;
+    virtual void Draw(const GameTimer& gt)override;
+
+    virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
+    virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
+    virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
+
+    void BuildDescriptorHeaps();
+    void BuildConstantBuffers();
+    void BuildRootSignature();
+    void BuildShadersAndInputLayout();
+    void BuildBoxGeometry();
+    void BuildPSO();
+
+private:
+
+    ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+    ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
+
+    std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
+
+    std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+
+    ComPtr<ID3DBlob> mvsByteCode = nullptr;
+    ComPtr<ID3DBlob> mpsByteCode = nullptr;
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+
+    ComPtr<ID3D12PipelineState> mPSO = nullptr;
+
+    XMFLOAT4X4 mWorld = MathHelper::Identity4x4();
+    XMFLOAT4X4 mView = MathHelper::Identity4x4();
+    XMFLOAT4X4 mProj = MathHelper::Identity4x4();
+
+    float mTheta = 1.5f * XM_PI;
+    float mPhi = XM_PIDIV4;
+    float mRadius = 5.0f;
+
+    POINT mLastMousePos;
+};
+
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
     PSTR cmdLine, int showCmd)
@@ -55,7 +109,37 @@ bool BoxApp::Initialize()
     {
         return false;
     }
+    //重置命令列表的作用是准备它记录新的渲染命令或计算命令
+    ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+    BuildDescriptorHeaps();
+    BuildConstantBuffers();
+    BuildRootSignature();
+	BuildShadersAndInputLayout();
+	BuildBoxGeometry();
+	BuildPSO();
+    ThrowIfFailed(mCommandList->Close());
+	ID3D12CommandList* cmdLists[] = { mCommandList.Get() };
+	mCommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+	// Wait until initialization is complete.
+	FlushCommandQueue();
     return true;
+}
+void BoxApp::OnResize()
+{
+    D3DApp::OnResize();
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * XM_PI, AspectRatio(), 1.0f, 1000.0f);
+	XMStoreFloat4x4(&mProj, P);
+}
+
+
+
+void BoxApp::OnMouseDown(WPARAM btnState, int x, int y) {
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
+	SetCapture(mhMainWnd);
+}
+void BoxApp::OnMouseUp(WPARAM btnState, int x, int y) {
+	ReleaseCapture();
 }
 
 void BoxApp::OnMouseMove(WPARAM btnState, int x, int y) {
@@ -78,33 +162,105 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y) {
     mLastMousePos.x = x;
 	mLastMousePos.y = y;
 }
+
 void BoxApp::Update(const GameTimer& gt) {
-	float x = mRadius * sinf(mPhi) * cosf(mTheta);
-	float y = mRadius * cosf(mPhi) ;
-	float z = mRadius * sinf(mPhi) * sinf(mTheta);
+    float x = mRadius * sinf(mPhi) * cosf(mTheta);
+    float y = mRadius * cosf(mPhi);
+    float z = mRadius * sinf(mPhi) * sinf(mTheta);
 
 
-	XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
-	XMVECTOR target = XMVectorZero();
-	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
     //摄像机矩阵
-	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
 
     //尤其在需要传递矩阵到 CPU 和 GPU 之间时，使用 XMFLOAT4X4 结构更方便，因为它是一个简单的可直接以浮点数组表示的结构。
-	XMStoreFloat4x4(&mView, view);
+    XMStoreFloat4x4(&mView, view);
 
 
     //世界矩阵
     XMMATRIX world = XMLoadFloat4x4(&mWorld);
 
-	//投影矩阵
-	XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    //投影矩阵
+    XMMATRIX proj = XMLoadFloat4x4(&mProj);
     XMMATRIX worldViewProj = world * view * proj;
 
+
+    //更新常量缓冲区，在cpu gpu之间传递数据
     ObjectConstants objConstants;
     XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
-	mObjectCB->CopyData(0, objConstants);
+    mObjectCB->CopyData(0, objConstants);
+}
+
+void BoxApp::Draw(const GameTimer& gt)
+{
+    //命令列表分配器准备好重新使用之前分配的内存，可以用来存储新命令
+    // 重置命令列表并使用特定的 PSO 作为初始状态
+    ThrowIfFailed(mDirectCmdListAlloc->Reset());
+    ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),mPSO.Get()));
+
+    mCommandList->RSSetViewports(1,&mScreenViewport);
+	mCommandList->RSSetScissorRects(1, &mScissorRect);
+
+    mCommandList->ResourceBarrier(
+        1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(
+            CurrentBackBuffer(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET)
+    );
+
+	// Clear the back buffer and depth buffer.
+    mCommandList->ClearRenderTargetView(
+        CurrentBackBufferView(),
+        reinterpret_cast<const float*>(&Colors::LightSteelBlue),
+        0,
+        nullptr
+    );
+	mCommandList->ClearDepthStencilView(
+		DepthStencilView(),
+		D3D12_CLEAR_FLAG_DEPTH,
+		1.0f, 0,
+		0, nullptr
+	);
+    mCommandList->OMSetRenderTargets(1,&CurrentBackBufferView(),true,&DepthStencilView());
+    //常量缓冲区
+	ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvHeap.Get() };
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+
+    // Set the vertex buffer view in the command list.
+    mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+    // Set the index buffer view in the command list.
+    mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
+
+    // Set the primitive topology.
+    mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    //将描述符表绑定到根签名的对应参数：
+    mCommandList->SetGraphicsRootDescriptorTable(0,mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+    mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount,1,0,0,0);
+
+    mCommandList->ResourceBarrier(
+        1,
+        &CD3DX12_RESOURCE_BARRIER::Transition(
+           CurrentBackBuffer(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PRESENT
+            )
+    );
+
+    ThrowIfFailed(mCommandList->Close());
+    ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
+    mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+    ThrowIfFailed(mSwapChain->Present(0, 0));
+    mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+
+    FlushCommandQueue();
 }
 void BoxApp::BuildDescriptorHeaps()
 {
@@ -135,20 +291,21 @@ void BoxApp::BuildConstantBuffers()
         &cbvDesc,
         mCbvHeap->GetCPUDescriptorHandleForHeapStart());
 }
+
 void BoxApp::BuildBoxGeometry()
 {
-	// 描述符->上传堆缓冲区->默认堆缓冲区->视图->slot->pipeline
-	Vertex vertices[] =
-	{
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) },
-        { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) },
-        { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) },
-        { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) },
-        { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) },
-        { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) },
-        { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) },
-        { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) }
-	};
+    // 描述符->上传堆缓冲区->默认堆缓冲区->视图->slot->pipeline
+    std::array<Vertex, 8> vertices =
+    {
+        Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
+        Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
+        Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
+        Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
+        Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
+        Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
+        Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
+        Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+    };
     std::array<std::uint16_t, 36> indices =
     {
         // front face
@@ -178,89 +335,93 @@ void BoxApp::BuildBoxGeometry()
 
 
     const UINT64 vbByteSize = 8 * sizeof(Vertex);
-	const UINT64 ibByteSize = 36 * sizeof(std::uint16_t);
-    ComPtr<ID3D12Resource> VertexBufferGpu = nullptr;
-	ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
-    ComPtr<ID3D12Resource> IndexBufferGpu = nullptr;
-    ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
-	VertexBufferGpu = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), vertices, vbByteSize, VertexBufferUploader);
-    IndexBufferGpu = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(), mCommandList.Get(), indices.data(), ibByteSize, IndexBufferUploader);
+    const UINT64 ibByteSize = 36 * sizeof(std::uint16_t);
 
-	// Create the vertex buffer view.
-	D3D12_VERTEX_BUFFER_VIEW vbv;
-	vbv.BufferLocation = VertexBufferGpu->GetGPUVirtualAddress();
-	vbv.StrideInBytes = sizeof(Vertex);
-	vbv.SizeInBytes = vbByteSize;
+    mBoxGeo = std::make_unique < MeshGeometry>();
+    mBoxGeo->Name = "boxGeo";
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
+    CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 
-    // Create the index buffer view.
-    D3D12_INDEX_BUFFER_VIEW ibv;
-    ibv.BufferLocation = VertexBufferGpu->GetGPUVirtualAddress();
-    ibv.Format = DXGI_FORMAT_R16_UINT;
-    ibv.SizeInBytes = ibByteSize;
-
-	// Set the vertex buffer view in the command list.
-	mCommandList->IASetVertexBuffers(0, 1, &vbv);
+    ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
+    CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 
-	// Set the primitive topology.
-	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    //uploader也是输出
+    mBoxGeo->VertexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+        mCommandList.Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
 
-    // Set the index buffer view in the command list.
-    mCommandList->IASetIndexBuffer(&ibv);
+    mBoxGeo->IndexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+        mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
+    mBoxGeo->VertexByteStride = sizeof(Vertex);
+    mBoxGeo->VertexBufferByteSize = vbByteSize;
+    mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    mBoxGeo->IndexBufferByteSize = ibByteSize;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = (UINT)indices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    mBoxGeo->DrawArgs["box"] = submesh;
 
 }
-
-void BoxApp::OnResize()
+void BoxApp::BuildRootSignature()
 {
-    D3DApp::OnResize();
+    CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+    CD3DX12_DESCRIPTOR_RANGE cvbTable;
+    cvbTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+    slotRootParameter[0].InitAsDescriptorTable(1, &cvbTable);
+    // A root signature is an array of root parameters.
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        &serializedRootSig, &errorBlob);
+
+    if (errorBlob != nullptr)
+    {
+        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+    }
+    ThrowIfFailed(hr);
+    ThrowIfFailed(md3dDevice->CreateRootSignature(
+        0,
+        serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(),
+        IID_PPV_ARGS(&mRootSignature))
+    );
+}
+void BoxApp::BuildShadersAndInputLayout()
+{
+    HRESULT hr = S_OK;
+
+    mvsByteCode = D3DUtil::CompileShader(L"C:\\repos\\cg\\dx\\d3d12book-master\\MyDemos\\Chapter6\\shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
+    mpsByteCode = D3DUtil::CompileShader(L"C:\\repos\\cg\\dx\\d3d12book-master\\MyDemos\\Chapter6\\shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
+
+    mInputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
 }
 
-void BoxApp::Update(const GameTimer& gt)
+void BoxApp::BuildPSO()
 {
-}
-
-void BoxApp::Draw(const GameTimer& gt)
-{
-    // Reuse the memory associated with command recording.
-   // We can only reset when the associated command lists have finished execution on the GPU.
-    ThrowIfFailed(mDirectCmdListAlloc->Reset());
-
-    // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
-    // Reusing the command list reuses memory.
-    ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
-
-    // Indicate a state transition on the resource usage.
-    mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-    // Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-    mCommandList->RSSetViewports(1, &mScreenViewport);
-    mCommandList->RSSetScissorRects(1, &mScissorRect);
-
-    // Clear the back buffer and depth buffer.
-    mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
-    mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-
-    // Specify the buffers we are going to render to.
-    mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
-
-    // Indicate a state transition on the resource usage.
-    mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
-    // Done recording commands.
-    ThrowIfFailed(mCommandList->Close());
-
-    // Add the command list to the queue for execution.
-    ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
-    mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-
-    // swap the back and front buffers
-    ThrowIfFailed(mSwapChain->Present(0, 0));
-    mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
-
-    // Wait until frame commands are complete.  This waiting is inefficient and is
-    // done for simplicity.  Later we will show how to organize our rendering code
-    // so we do not have to wait per frame.
-    FlushCommandQueue();
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
+	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	psoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
+    psoDesc.pRootSignature = mRootSignature.Get();
+	psoDesc.VS = { reinterpret_cast<BYTE*>(mvsByteCode->GetBufferPointer()), mvsByteCode->GetBufferSize() };
+    psoDesc.PS = { reinterpret_cast<BYTE*>(mpsByteCode->GetBufferPointer()), mpsByteCode->GetBufferSize() };
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT); 
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = 1;
+	psoDesc.RTVFormats[0] = mBackBufferFormat;
+    psoDesc.SampleDesc.Count = m4xMsaaQuality ? 4 : 1;
+	psoDesc.SampleDesc.Quality = m4xMsaaQuality - 1;
+	psoDesc.DSVFormat = mDepthStencilFormat;
+    md3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&mPSO));
 }
