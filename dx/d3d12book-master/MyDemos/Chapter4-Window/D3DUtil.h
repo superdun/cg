@@ -99,6 +99,18 @@ struct MeshGeometry
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
+	//œ∞Ã‚2
+	Microsoft::WRL::ComPtr<ID3DBlob> VPosBufferCPU = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> VColorBufferCPU = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VPosBufferGPU = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VColorBufferGPU = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VPosBufferUploader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VColorBufferUploader = nullptr;
+	UINT VPosByteStride = 0;
+	UINT VPosBufferByteSize = 0;
+	UINT VColorByteStride = 0;
+	UINT VColorBufferByteSize = 0;
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
@@ -124,6 +136,25 @@ struct MeshGeometry
 
 		return vbv;
 	}
+	D3D12_VERTEX_BUFFER_VIEW VPosBufferView()const
+	{
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.BufferLocation = VPosBufferGPU->GetGPUVirtualAddress();
+		vbv.StrideInBytes = VPosByteStride;
+		vbv.SizeInBytes =VPosBufferByteSize;
+
+		return vbv;
+	}
+	D3D12_VERTEX_BUFFER_VIEW VColorBufferView()const
+	{
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.BufferLocation = VColorBufferGPU->GetGPUVirtualAddress();
+		vbv.StrideInBytes = VColorByteStride;
+		vbv.SizeInBytes = VColorBufferByteSize;
+
+		return vbv;
+	}
+
 
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView()const
 	{
@@ -140,6 +171,10 @@ struct MeshGeometry
 	{
 		VertexBufferUploader = nullptr;
 		IndexBufferUploader = nullptr;
+
+		//œ∞Ã‚2
+		VPosBufferUploader = nullptr;
+		VColorBufferUploader = nullptr;
 	}
 };
 

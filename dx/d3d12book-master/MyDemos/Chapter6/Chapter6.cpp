@@ -11,6 +11,14 @@ struct Vertex
     XMFLOAT3 Pos;
     XMFLOAT4 Color;
 };
+struct VPosData
+{
+    XMFLOAT3 Pos;
+};
+struct VColorData
+{
+    XMFLOAT4 Color;
+};
 
 struct ObjectConstants
 {
@@ -232,8 +240,12 @@ void BoxApp::Draw(const GameTimer& gt)
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-    // Set the vertex buffer view in the command list.
-    mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+    //// Set the vertex buffer view in the command list.
+    //mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+    //习题2
+    mCommandList->IASetVertexBuffers(1, 1, &mBoxGeo->VColorBufferView());
+    mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VPosBufferView());
+
     // Set the index buffer view in the command list.
     mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
 
@@ -295,6 +307,29 @@ void BoxApp::BuildConstantBuffers()
 void BoxApp::BuildBoxGeometry()
 {
     // 描述符->上传堆缓冲区->默认堆缓冲区->视图->slot->pipeline
+
+    std::array<VPosData, 8> vPosData =
+    {
+        VPosData({ XMFLOAT3(-1.0f, -1.0f, -1.0f) }),
+        VPosData({ XMFLOAT3(-1.0f, +1.0f, -1.0f) }),
+        VPosData({ XMFLOAT3(+1.0f, +1.0f, -1.0f) }),
+        VPosData({ XMFLOAT3(+1.0f, -1.0f, -1.0f) }),
+        VPosData({ XMFLOAT3(-1.0f, -1.0f, +1.0f) }),
+        VPosData({ XMFLOAT3(-1.0f, +1.0f, +1.0f) }),
+        VPosData({ XMFLOAT3(+1.0f, +1.0f, +1.0f) }),
+        VPosData({ XMFLOAT3(+1.0f, -1.0f, +1.0f) })
+    };
+    std::array<VColorData, 8> vColorData =
+    {
+        VColorData({ XMFLOAT4(Colors::White) }),
+        VColorData({  XMFLOAT4(Colors::Black) }),
+        VColorData({  XMFLOAT4(Colors::Red) }),
+        VColorData({  XMFLOAT4(Colors::Green) }),
+        VColorData({ XMFLOAT4(Colors::Blue) }),
+        VColorData({  XMFLOAT4(Colors::Yellow) }),
+        VColorData({  XMFLOAT4(Colors::Cyan) }),
+        VColorData({  XMFLOAT4(Colors::Magenta) })
+    };
     std::array<Vertex, 8> vertices =
     {
         Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
@@ -335,6 +370,10 @@ void BoxApp::BuildBoxGeometry()
 
 
     const UINT64 vbByteSize = 8 * sizeof(Vertex);
+    //习题2
+    const UINT64 vPosByteSize = 8 * sizeof(VPosData);
+    const UINT64 vColorByteSize = 8 * sizeof(VColorData);
+
     const UINT64 ibByteSize = 36 * sizeof(std::uint16_t);
 
     mBoxGeo = std::make_unique < MeshGeometry>();
@@ -348,7 +387,24 @@ void BoxApp::BuildBoxGeometry()
 
     //uploader也是输出
     mBoxGeo->VertexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
-        mCommandList.Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+       mCommandList.Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+
+    //习题2
+    ThrowIfFailed(D3DCreateBlob(vPosByteSize, &mBoxGeo->VPosBufferCPU));
+    CopyMemory(mBoxGeo->VPosBufferCPU->GetBufferPointer(), vertices.data(), vPosByteSize);
+
+    ThrowIfFailed(D3DCreateBlob(vColorByteSize, &mBoxGeo->VColorBufferCPU));
+    CopyMemory(mBoxGeo->VColorBufferCPU->GetBufferPointer(), indices.data(), vColorByteSize);
+
+    mBoxGeo->VPosBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+        mCommandList.Get(), vPosData.data(), vbByteSize, mBoxGeo->VPosBufferUploader);
+    mBoxGeo->VColorBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+        mCommandList.Get(), vColorData.data(), vbByteSize, mBoxGeo->VColorBufferUploader);
+    mBoxGeo->VPosByteStride = sizeof(VPosData);
+    mBoxGeo->VPosBufferByteSize = vPosByteSize;
+    mBoxGeo->VColorByteStride = sizeof(VColorData);
+    mBoxGeo->VColorBufferByteSize = vColorByteSize;
+
 
     mBoxGeo->IndexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
         mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
@@ -397,11 +453,16 @@ void BoxApp::BuildShadersAndInputLayout()
 
     mvsByteCode = D3DUtil::CompileShader(L"C:\\repos\\cg\\dx\\d3d12book-master\\MyDemos\\Chapter6\\shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
     mpsByteCode = D3DUtil::CompileShader(L"C:\\repos\\cg\\dx\\d3d12book-master\\MyDemos\\Chapter6\\shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
-
+    //习题2
+    //mInputLayout =
+    //{
+    //    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    //    { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    //};
     mInputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 }
 
