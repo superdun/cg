@@ -68,7 +68,14 @@ bool D3DApp::Get4xMsaaState() const
 
 void D3DApp::Set4xMsaaState(bool value)
 {
-	m4xMsaaState = value;
+	if (m4xMsaaState != value)
+	{
+		m4xMsaaState = value;
+
+		// Recreate the swapchain and buffers with new multisample settings.
+		CreateSwapChain();
+		OnResize();
+	}
 }
 
 bool D3DApp::Initialize()
@@ -543,17 +550,8 @@ void D3DApp::CreateSwapChain()
 	sd.BufferDesc.Format = mBackBufferFormat;
 	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	// Use 4X MSAA? --must match swap chain MSAA values.
-	if (m4xMsaaState)
-	{
-		sd.SampleDesc.Count = 4;
-		sd.SampleDesc.Quality = m4xMsaaQuality - 1;
-	}
-	else
-	{
-		sd.SampleDesc.Count = 1;
-		sd.SampleDesc.Quality = 0;
-	}
+	sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
+	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = SwapChainBufferCount;
 	sd.OutputWindow = mhMainWnd;
