@@ -334,8 +334,8 @@ void BoxApp::BuildBoxGeometry()
     };
 
 
-    const UINT64 vbByteSize = 8 * sizeof(Vertex);
-    const UINT64 ibByteSize = 36 * sizeof(std::uint16_t);
+    const UINT64 vbByteSize = vertices.size() * sizeof(Vertex);
+    const UINT64 ibByteSize = indices.size() * sizeof(std::uint16_t);
 
     mBoxGeo = std::make_unique < MeshGeometry>();
     mBoxGeo->Name = "boxGeo";
