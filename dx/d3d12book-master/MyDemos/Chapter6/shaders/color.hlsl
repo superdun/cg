@@ -7,6 +7,7 @@
 cbuffer cbPerObject : register(b0)
 {
 	float4x4 gWorldViewProj; 
+	float gTime;
 };
 
 struct VertexIn
@@ -23,6 +24,8 @@ struct VertexOut
 
 VertexOut VS(VertexIn vin)
 {
+	vin.PosL.xy += 0.5f*sin(vin.PosL.x)*sin(3.0f*gTime);
+	vin.PosL.z *= 0.6f+ 0.4f*sin(2.0f*gTime);
 	VertexOut vout;
 	
 	// Transform to homogeneous clip space.
