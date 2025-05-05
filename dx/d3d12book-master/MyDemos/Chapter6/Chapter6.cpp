@@ -181,23 +181,129 @@ void BoxApp::Update(const GameTimer& gt) {
 
 
     //世界矩阵
-    XMMATRIX world = XMLoadFloat4x4(&mWorld);
-
+    DirectX::XMFLOAT4X4 I2(
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 3.0f, 0.0f, 1.0f);
+    XMMATRIX world1 = XMLoadFloat4x4(&mWorld);
+    XMMATRIX world2 = XMLoadFloat4x4(&I2);
     //投影矩阵
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
-    XMMATRIX worldViewProj = world * view * proj;
-
+    XMMATRIX worldViewProj1 = world1 * view * proj;
+    XMMATRIX worldViewProj2 = world2 * view * proj;
 
     //更新常量缓冲区，在cpu gpu之间传递数据
-    ObjectConstants objConstants;
-    XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
-    mObjectCB->CopyData(0, objConstants);
+    ObjectConstants objConstants1;
+    XMStoreFloat4x4(&objConstants1.WorldViewProj, XMMatrixTranspose(worldViewProj1));
+    ObjectConstants objConstants2;
+    XMStoreFloat4x4(&objConstants2.WorldViewProj, XMMatrixTranspose(worldViewProj2));
+    mObjectCB->CopyData(0, objConstants1);
+    mObjectCB->CopyData(1, objConstants2);
+
 }
 
 void BoxApp::Draw(const GameTimer& gt)
 {
     //命令列表分配器准备好重新使用之前分配的内存，可以用来存储新命令
     // 重置命令列表并使用特定的 PSO 作为初始状态
+
+
+    //你问的“描述符（Descriptor）、根签名（Root Signature）、描述符表（Descriptor Table）、常量缓冲区（Constant Buffer）”之间的关系，是理解 DirectX 12 资源绑定的核心。下面我用简明的语言帮你梳理它们之间的联系和作用。
+
+    //    -- -
+
+    //    ## 1. * *常量缓冲区（Constant Buffer） * *
+
+    //    -常量缓冲区是 GPU 读取的特殊缓冲区，通常用来存储着色器需要的常量数据（如变换矩阵、材质参数等）。
+    //    - 举例来说，你可能有两个不同物体，每个物体自己的变换矩阵放在两个不同的常量缓冲区里。
+
+    //    -- -
+
+    //    ## 2. * *描述符（Descriptor） * *
+
+    //    -资源（常量缓冲、纹理、采样器等）不可直接绑定给 GPU，必须通过“描述符”间接访问。
+    //    - 描述符是GPU能够理解的“资源视图”，指明资源的类型和所在位置。
+    //    - 举例，`CBV`（Constant Buffer View）就是一个描述符，告诉 GPU“这里有一个常量缓冲区，它的起始地址是……大少多大……”。
+    //    - 描述符存储在描述符堆（Descriptor Heap）里。
+
+    //    -- -
+
+    //    ## 3. * *描述符堆（Descriptor Heap） * *
+
+    //    -描述符的缓冲区，是GPU可访问的数组。
+    //    - 你创建多个CBV描述符放入堆中，描述符堆里的每个描述符都对应一个资源视图。
+
+    //    -- -
+
+    //    ## 4. * *根签名（Root Signature） * *
+
+    //    -根签名定义了着色器能访问资源和绑定方式的协议，类似接口规范。
+    //    - 它定义了若干个根参数（Root Parameters），根参数可以是：
+
+    //    - **根常量（Root Constants） * *：直接在命令缓冲里写入的值，直接绑定供着色器访问。
+    //    - **根常量缓冲区视图（Root CBV） * *：直接绑定 GPU 虚拟地址，不靠描述符堆。
+    //    - **描述符表（Descriptor Table） * *：根参数为描述符的指针（句柄），指向描述符堆的一段连续描述符，间接访问资源。
+
+    //    - 这个设计是为了灵活管理性能和复杂度。
+
+    //    -- -
+
+    //    ## 5. * *描述符表（Descriptor Table） * *
+
+    //    -根参数类型之一，是一段描述符的数组（在描述符堆里）。
+    //    - 描述符表告诉GPU：“根参数实际是描述符堆中某块连续描述符的地址”。
+    //    - 着色器代码里通过绑定的寄存器（如`b0`, `t0`等）访问这些资源。
+
+    //    -- -
+
+    //    ## 6. * *关系总结示意 * *
+
+    //    | 组件 | 作用 | 关系                            |
+    //    |---------------- - | ---------------------------- - | ------------------------------ - |
+    //    | 常量缓冲区(CBV) | 存储具体的常量数据 | 需要被 GPU 使用                 |
+    //    | 描述符(CBV视图) | 资源的“视图”，间接链接到常量缓冲区 | 放入描述符堆中，用来绑定资源     |
+    //    | 描述符堆 | 存放描述符的数组 | 描述符表指向描述符堆中的位置     |
+    //    | 根签名 | 约定资源绑定方式 | 包含根参数，根参数可能是描述符表  |
+    //    | 描述符表 | 根参数的一种，指向描述符堆的描述符区 | 通过`SetGraphicsRootDescriptorTable`绑定 |
+
+    //    -- -
+
+    //    ## 7. * *绑定过程简单流程 * *
+
+    //    1. * *创建常量缓冲区数据 * *，上传 CPU 内存中的变换矩阵等。
+    //    2. * *创建 CBV 描述符 * *，描述符指向常量缓冲区的 GPU 地址，放入描述符堆。
+    //    3. * *根签名定义一个描述符表（或单根常量缓冲区视图） * *，让着色器知道在哪里找资源。
+    //    4. * *绘制命令里调用 `SetGraphicsRootDescriptorTable` 绑定指定描述符堆的描述符句柄（GPU指针）到根参数上。 * *
+    //    5. * *GPU 在着色器里通过绑定的寄存器访问资源。 * *
+
+    //    -- -
+
+    //    ## 8. * *示例：用描述符表绑定两个不同常量缓冲区绘制两个物体 * *
+
+    //    -你的描述符堆里有两个 CBV 描述符（0号，1号），分别指向两个常量缓冲区数据。
+    //    - 根签名里定义的描述符表范围大小是2（两个连续描述符）。
+    //    - 绘制物体A时绑定描述符堆起始句柄（0号描述符）。
+    //    - 绘制物体B时绑定偏移一个描述符大小的句柄（1号描述符）。
+    //    - 两个物体用不同的变换矩阵等常量。
+
+    //    -- -
+
+    //    # 总结
+
+    //    | 名词 | 本质 | 作用                                              |
+    //    |---------------- - | -------------------------------- | ------------------------------------------------ - |
+    //    | 常量缓冲区(CB) | GPU内存中的数据块 | 存储着色器要用的常量数据                                  |
+    //    | 描述符(Descriptor) | “资源视图”，描述资源如何被访问 | 告诉GPU资源的类型和位置，比如CBV，SRV等                     |
+    //    | 描述符堆(Heap) | 存放一批描述符的GPU内存缓冲区 | 提供描述符批量管理                                       |
+    //    | 根签名(Root Signature) | 定义资源绑定方式的配置协议，可包含根参数 | 着色器的资源访问入口，配置描述符表、根CBV、根常量等                      |
+    //    | 描述符表(Descriptor Table) | 根签名中的一种根参数，指向描述符堆中一段连续描述符 | 通过一次绑定让着色器访问一组资源，提高灵活性和效率 |
+
+    //    -- -
+
+    //    如果你需要，我可以帮你写一份示意代码，演示用根签名、描述符表和常量缓冲区怎么协同使用。需要告诉我！
+
+
     ThrowIfFailed(mDirectCmdListAlloc->Reset());
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),mPSO.Get()));
 
@@ -240,9 +346,15 @@ void BoxApp::Draw(const GameTimer& gt)
     // Set the primitive topology.
     mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     //将描述符表绑定到根签名的对应参数：
-    mCommandList->SetGraphicsRootDescriptorTable(0,mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+    UINT descriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE cbvHandle(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+    mCommandList->SetGraphicsRootDescriptorTable(0, cbvHandle);
 
-    mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount,1,0,0,0);
+    mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount,1, mBoxGeo->DrawArgs["box"].StartIndexLocation, mBoxGeo->DrawArgs["box"].BaseVertexLocation,0);
+   
+    cbvHandle.Offset(1, descriptorSize);
+    mCommandList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+    mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["Pymrid"].IndexCount, 1, mBoxGeo->DrawArgs["Pymrid"].StartIndexLocation, mBoxGeo->DrawArgs["Pymrid"].BaseVertexLocation, 0);
 
     mCommandList->ResourceBarrier(
         1,
@@ -265,7 +377,7 @@ void BoxApp::Draw(const GameTimer& gt)
 void BoxApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-    cbvHeapDesc.NumDescriptors = 1;
+    cbvHeapDesc.NumDescriptors = 2;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     cbvHeapDesc.NodeMask = 0;
@@ -274,28 +386,28 @@ void BoxApp::BuildDescriptorHeaps()
 }
 void BoxApp::BuildConstantBuffers()
 {
-    mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
+    mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 2, true);
 
     UINT objCBByteSize = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    for (int i = 0; i < 2; ++i)
+    {
+        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB->Resource()->GetGPUVirtualAddress();
+		cbAddress += i * objCBByteSize;
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+        cbvDesc.BufferLocation = cbAddress;
+        cbvDesc.SizeInBytes = objCBByteSize;
 
-    D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB->Resource()->GetGPUVirtualAddress();
-    // Offset to the ith object constant buffer in the buffer.
-    int boxCBufIndex = 0;
-    cbAddress += boxCBufIndex * objCBByteSize;
+        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+        handle.Offset(i, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)); // descriptorSize 通常通过设备查询得到
 
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-    cbvDesc.BufferLocation = cbAddress;
-    cbvDesc.SizeInBytes = D3DUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-    md3dDevice->CreateConstantBufferView(
-        &cbvDesc,
-        mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+        md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
+    }
 }
 
 void BoxApp::BuildBoxGeometry()
 {
     // 描述符->上传堆缓冲区->默认堆缓冲区->视图->slot->pipeline
-    std::array<Vertex, 8> vertices =
+    std::array<Vertex, 13> vertices =
     {
         Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
         Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
@@ -304,9 +416,17 @@ void BoxApp::BuildBoxGeometry()
         Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
         Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
         Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-        Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+        Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) }),
+
+        Vertex({ XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT4(Colors::White) }),
+        Vertex({ XMFLOAT3(-1.0f, 0.0f, 1.0f), XMFLOAT4(Colors::Red) }),    
+        Vertex({ XMFLOAT3(1.0f, 0.0f, +1.0f), XMFLOAT4(Colors::Green) }),
+        Vertex({ XMFLOAT3(+1.0f, 0.0f, -1.0f), XMFLOAT4(Colors::Blue) }),   
+        Vertex({ XMFLOAT3(-1.0f, 0.0f, -1.0f), XMFLOAT4(Colors::Yellow) }),
+         
+
     };
-    std::array<std::uint16_t, 36> indices =
+    std::array<std::uint16_t, 54> indices =
     {
         // front face
         0, 1, 2,
@@ -330,7 +450,17 @@ void BoxApp::BuildBoxGeometry()
 
         // bottom face
         4, 0, 3,
-        4, 3, 7
+        4, 3, 7,
+
+        // 底面 (两个三角形)
+        1, 3,2,
+        1, 4, 3,
+
+        // 侧面
+        0, 4, 1,  // 左侧面
+        0, 3, 4,  // 前侧面
+        0, 2, 3,  // 右侧面
+        0, 1, 2   // 后侧面
     };
 
 
@@ -357,13 +487,18 @@ void BoxApp::BuildBoxGeometry()
     mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
     mBoxGeo->IndexBufferByteSize = ibByteSize;
 
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
+    SubmeshGeometry submesh1;
+    submesh1.IndexCount = 36;
+    submesh1.StartIndexLocation = 0;
+    submesh1.BaseVertexLocation = 0;
 
-    mBoxGeo->DrawArgs["box"] = submesh;
+    SubmeshGeometry submesh2;
+    submesh2.IndexCount = 18;
+    submesh2.StartIndexLocation = 36;
+    submesh2.BaseVertexLocation = 8;
 
+    mBoxGeo->DrawArgs["box"] = submesh1;
+    mBoxGeo->DrawArgs["Pymrid"] = submesh2;
 }
 void BoxApp::BuildRootSignature()
 {
