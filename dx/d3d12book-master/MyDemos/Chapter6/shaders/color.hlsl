@@ -7,6 +7,7 @@
 cbuffer cbPerObject : register(b0)
 {
 	float4x4 gWorldViewProj; 
+	float4 gPulseColor;
 	float gTime;
 };
 
@@ -24,6 +25,7 @@ struct VertexOut
 
 VertexOut VS(VertexIn vin)
 {
+
 	VertexOut vout;
 	
 	// Transform to homogeneous clip space.
@@ -37,10 +39,11 @@ VertexOut VS(VertexIn vin)
 
 float4 PS(VertexOut pin) : SV_Target
 {
-	pin.Color.x = pin.Color.x*(sin(gTime)+2)/2;
-	pin.Color.y = pin.Color.y*(cos(3*gTime)+2)/2;
-	pin.Color.x = pin.Color.z*(sin(5*gTime)+2)/2;
-    return pin.Color;
+	const float pi = 3.14159;
+	float s = 0.5f*sin(2*gTime-0.25f*pi)+0.5f;
+
+	float4 c = lerp(pin.Color,gPulseColor,s);
+    return c;
 }
 
 
