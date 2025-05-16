@@ -58,6 +58,11 @@ protected:
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) {}
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) {}
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) {}
+
+	void OnKeyboardInput(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMainPassCB(const GameTimer& gt);
 protected:
 	static D3DApp* mApp;
 

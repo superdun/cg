@@ -326,7 +326,7 @@ void ShapesApps::BuildFrameResources()
 {
     for (size_t i = 0; i < mNumFrameResources; ++i)
     {
-        mFrameResources.push_back(std::make_unique<FrameResource>)(md3dDevice.Get(), 1, );
+        mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(), 1, mAllRitems.size()));
     }
 }
 void ShapesApps::BuildDescriptorHeaps()
