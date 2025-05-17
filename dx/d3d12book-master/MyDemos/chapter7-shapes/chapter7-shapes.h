@@ -8,3 +8,4 @@
 #include "../Chapter6/MathHelper.h"
 #include "../Chapter6/UploadBuffer.h"
 #include "FrameResource.h"
+#include "GeometryGenerator.h"

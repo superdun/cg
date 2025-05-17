@@ -495,6 +495,7 @@ void D3DApp::OnResize()
 	mScissorRect = { 0, 0, mClientWidth, mClientHeight };
 }
 
+
 void D3DApp::CalculateFrameStats()
 {
 	static int frameCnt = 0;
