@@ -447,6 +447,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 }
 
 
+
 void GeometryGenerator::Subdivide(MeshData& meshData)
 {
 	// Save a copy of the input geometry.
