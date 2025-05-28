@@ -6,7 +6,7 @@
 
 
 using namespace DirectX;
-int gNumFrameResources = 3;
+
 
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
@@ -61,7 +61,7 @@ private:
     void UpdateCamera(const GameTimer& gt);
     void UpdateObjectCBs(const GameTimer& gt);
     void UpdateMainPassCB(const GameTimer& gt);
-
+    void BuildMaterials();
     void BuildFrameResources();
     void BuildShapeGeometry();
     void BuildRenderItems();
@@ -87,6 +87,8 @@ private:
     PassConstants mMainPassCB;
     UINT mPassCbvOffset = 0;
     bool mIsWireframe = false;
+    std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
+    std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
     std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
     std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
     std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
@@ -288,6 +290,46 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
     currentPassCB->CopyData(0, mMainPassCB);
 }
 
+void ShapesApp::BuildMaterials()
+{
+    auto bricks0 = std::make_unique<Material>();
+    bricks0->Name = "bricks0";
+    bricks0->MatCBIndex = 0;
+    bricks0->DiffuseSrvHeapIndex = 0;
+    bricks0->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
+    bricks0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+    bricks0->Roughness = 0.1f;
+
+    auto stone0 = std::make_unique<Material>();
+    stone0->Name = "stone0";
+    stone0->MatCBIndex = 1;
+    stone0->DiffuseSrvHeapIndex = 1;
+    stone0->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
+    stone0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    stone0->Roughness = 0.3f;
+
+    auto tile0 = std::make_unique<Material>();
+    tile0->Name = "tile0";
+    tile0->MatCBIndex = 2;
+    tile0->DiffuseSrvHeapIndex = 2;
+    tile0->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
+    tile0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+    tile0->Roughness = 0.2f;
+
+    auto skullMat = std::make_unique<Material>();
+    skullMat->Name = "skullMat";
+    skullMat->MatCBIndex = 3;
+    skullMat->DiffuseSrvHeapIndex = 3;
+    skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+    skullMat->Roughness = 0.3f;
+
+    mMaterials["bricks0"] = std::move(bricks0);
+    mMaterials["stone0"] = std::move(stone0);
+    mMaterials["tile0"] = std::move(tile0);
+    mMaterials["skullMat"] = std::move(skullMat);
+}
+
 void ShapesApp::Update(const GameTimer& gt) {
     OnKeyboardInput(gt);
     UpdateCamera(gt);
@@ -398,6 +440,7 @@ void ShapesApp::BuildFrameResources()
 void ShapesApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
+    GeometryGenerator::MeshData skull = geoGen.CreateFromFile("Models/skull.txt");
     GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
     GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
     GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
@@ -413,13 +456,14 @@ void ShapesApp::BuildShapeGeometry()
     UINT gridVertexOffset = (UINT)box.Vertices.size();
     UINT sphereVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
     UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
+    UINT skullVertexOffset = cylinderVertexOffset + (UINT)cylinder.Vertices.size();
 
     // Cache the starting index for each object in the concatenated index buffer.
     UINT boxIndexOffset = 0;
     UINT gridIndexOffset = (UINT)box.Indices32.size();
     UINT sphereIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
     UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
-
+    UINT skullIndexOffset = cylinderIndexOffset + (UINT)cylinder.Indices32.size();
     // Define the SubmeshGeometry that cover different 
     // regions of the vertex/index buffers.
 
@@ -443,6 +487,10 @@ void ShapesApp::BuildShapeGeometry()
     cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
     cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 
+    SubmeshGeometry skullSubmesh;
+    skullSubmesh.IndexCount = (UINT)skull.Indices32.size();
+    skullSubmesh.StartIndexLocation = skullIndexOffset;
+    skullSubmesh.BaseVertexLocation = skullVertexOffset;
     //
     // Extract the vertex elements we are interested in and pack the
     // vertices of all the meshes into one vertex buffer.
@@ -452,7 +500,8 @@ void ShapesApp::BuildShapeGeometry()
         box.Vertices.size() +
         grid.Vertices.size() +
         sphere.Vertices.size() +
-        cylinder.Vertices.size();
+        cylinder.Vertices.size() +
+        skull.Vertices.size();
 
     std::vector<Vertex> vertices(totalVertexCount);
 
@@ -481,11 +530,18 @@ void ShapesApp::BuildShapeGeometry()
         vertices[k].Color = XMFLOAT4(DirectX::Colors::SteelBlue);
     }
 
+    for (size_t i = 0; i < skull.Vertices.size(); ++i, ++k)
+    {
+        vertices[k].Pos = skull.Vertices[i].Position;
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::Gold);
+    }
+
     std::vector<std::uint16_t> indices;
     indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
     indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
     indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
     indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
+    indices.insert(indices.end(), std::begin(skull.GetIndices16()), std::end(skull.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
     const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
@@ -514,7 +570,7 @@ void ShapesApp::BuildShapeGeometry()
     geo->DrawArgs["grid"] = gridSubmesh;
     geo->DrawArgs["sphere"] = sphereSubmesh;
     geo->DrawArgs["cylinder"] = cylinderSubmesh;
-
+    geo->DrawArgs["skull"] = skullSubmesh;
     mGeometries[geo->Name] = std::move(geo);
 
 }
@@ -540,7 +596,19 @@ void ShapesApp::BuildRenderItems()
     gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
     mAllRitems.push_back(std::move(gridRitem));
 
-    UINT objCBIndex = 2;
+    auto skullRitem = std::make_unique<RenderItem>();
+    XMStoreFloat4x4(&skullRitem->World, XMMatrixScaling(0.5f, 0.5f, 0.5f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
+    //skullRitem->TexTransform = MathHelper::Identity4x4();
+    skullRitem->ObjCBIndex = 2;
+    //skullRitem->Mat = mMaterials["skullMat"].get();
+    skullRitem->Geo = mGeometries["shapeGeo"].get();
+    skullRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    skullRitem->IndexCount = skullRitem->Geo->DrawArgs["skull"].IndexCount;
+    skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
+    skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
+    mAllRitems.push_back(std::move(skullRitem));
+
+    UINT objCBIndex = 3;
     for (int i = 0; i < 5; ++i)
     {
         auto leftCylRitem = std::make_unique<RenderItem>();

@@ -17,8 +17,9 @@
 #include <array>
 #include <unordered_map>
 #include <memory>
+#include "../Chapter6/MathHelper.h"
 using Microsoft::WRL::ComPtr;
-
+const int gNumFrameResources = 3;
 class D3DUtil {
 public:
     static Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(
@@ -86,6 +87,28 @@ struct SubmeshGeometry
 	// Bounding box of the geometry defined by this submesh. 
 	// This is used in later chapters of the book.
 	DirectX::BoundingBox Bounds;
+};
+struct Texture
+{
+	// Unique material name for lookup.
+	std::string Name;
+
+	std::wstring Filename;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
+};
+struct Material {
+	std::string Name;
+	int MatCBIndex = -1;
+	int DiffuseSrvHeapIndex = -1;
+	int NumFramesDirty = 3;
+	//漫反射反照率
+	DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f,1.0f, 1.0f, 1.0f };
+	//反射率
+	DirectX::XMFLOAT3 FresnelR0 = { 0.01f,0.01f, 0.01f };
+	float Roughness = .25f;
+	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };
 
 struct MeshGeometry
