@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "chapter7-shapes", "..\chapt
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chapter7-landAndWaves", "..\Chapter7-landAndWaves\Chapter7-landAndWaves.vcxproj", "{3BF3CEA3-6D83-4D47-B826-B876692F3D64}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chapter8-shapes", "..\Chapter8-shapes\Chapter8-shapes.vcxproj", "{EA76B554-78DA-40B3-BF7E-2983DDBC1876}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -81,6 +83,14 @@ Global
 		{3BF3CEA3-6D83-4D47-B826-B876692F3D64}.Release|x64.Build.0 = Release|x64
 		{3BF3CEA3-6D83-4D47-B826-B876692F3D64}.Release|x86.ActiveCfg = Release|Win32
 		{3BF3CEA3-6D83-4D47-B826-B876692F3D64}.Release|x86.Build.0 = Release|Win32
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Debug|x64.ActiveCfg = Debug|x64
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Debug|x64.Build.0 = Debug|x64
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Debug|x86.ActiveCfg = Debug|Win32
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Debug|x86.Build.0 = Debug|Win32
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Release|x64.ActiveCfg = Release|x64
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Release|x64.Build.0 = Release|x64
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Release|x86.ActiveCfg = Release|Win32
+		{EA76B554-78DA-40B3-BF7E-2983DDBC1876}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
