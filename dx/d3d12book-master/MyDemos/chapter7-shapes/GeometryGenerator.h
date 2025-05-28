@@ -2,16 +2,18 @@
 #include <cstdint>
 #include <DirectXMath.h>
 #include <vector>
-
-
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 using uint16 = std::uint16_t;
 using uint32 = std::uint32_t;
 using namespace DirectX;
 class GeometryGenerator
 {
 public:
-	struct Vertex
-	{
+    struct Vertex
+    {
         Vertex() {}
         Vertex(
             const XMFLOAT3& p,
@@ -41,7 +43,7 @@ public:
         XMFLOAT3 Normal;
         XMFLOAT3 TangentU;
         XMFLOAT2 TexC;
-	};
+    };
 
     struct MeshData
     {
@@ -99,10 +101,11 @@ public:
     ///</summary>
     MeshData CreateQuad(float x, float y, float w, float h, float depth);
 
-
+    MeshData CreateFromFile(const std::string& path);
 private:
     void Subdivide(MeshData& meshData);
     Vertex MidPoint(const Vertex& v0, const Vertex& v1);
     void BuildCylinderTopCap(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount, MeshData& meshData);
     void BuildCylinderBottomCap(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount, MeshData& meshData);
+    std::string GetTrimedString(std::string text);
 };

@@ -318,24 +318,24 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 	}
 	uint32 ringVertexCount = sliceCount + 1;
 
-	for(uint32 i = 0; i < stackCount; ++i)
+	for (uint32 i = 0; i < stackCount; ++i)
 	{
-		for(uint32 j = 0; j < sliceCount; ++j)
+		for (uint32 j = 0; j < sliceCount; ++j)
 		{
-			meshData.Indices32.push_back(i*ringVertexCount + j);
-			meshData.Indices32.push_back((i+1)*ringVertexCount + j);
-			meshData.Indices32.push_back((i+1)*ringVertexCount + j+1);
+			meshData.Indices32.push_back(i * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j + 1);
 
-			meshData.Indices32.push_back(i*ringVertexCount + j);
-			meshData.Indices32.push_back((i+1)*ringVertexCount + j+1);
-			meshData.Indices32.push_back(i*ringVertexCount + j+1);
+			meshData.Indices32.push_back(i * ringVertexCount + j);
+			meshData.Indices32.push_back((i + 1) * ringVertexCount + j + 1);
+			meshData.Indices32.push_back(i * ringVertexCount + j + 1);
 		}
 	}
 
 	BuildCylinderTopCap(bottomRadius, topRadius, height, sliceCount, stackCount, meshData);
 	BuildCylinderBottomCap(bottomRadius, topRadius, height, sliceCount, stackCount, meshData);
 
-    return meshData;
+	return meshData;
 }
 
 GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float depth, uint32 m, uint32 n)
@@ -442,6 +442,109 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 	meshData.Indices32[3] = 0;
 	meshData.Indices32[4] = 2;
 	meshData.Indices32[5] = 3;
+
+	return meshData;
+}
+
+GeometryGenerator::MeshData GeometryGenerator::CreateFromFile(const std::string& path)
+{
+	MeshData meshData;
+	std::ifstream file(path);
+	if (!file.is_open())
+	{
+		std::cerr << "Failed to open file: " << path << "\n";
+		throw;
+	}
+	std::string line;
+	std::string dummy;
+	long vertexCount, trangleCount;
+	std::string trimed;
+	std::getline(file, line);
+	auto trimmed = GetTrimedString(line);
+	std::istringstream issFirstLine(trimmed);
+	if (issFirstLine >> dummy >> vertexCount)
+	{
+		meshData.Vertices.resize(vertexCount);
+	}
+
+	std::getline(file, line);
+	trimmed = GetTrimedString(line);
+	std::istringstream issSecondLine(trimmed);
+	if (issSecondLine >> dummy >> trangleCount)
+	{
+		meshData.Indices32.resize(trangleCount * 3);
+	}
+
+	while (std::getline(file, line))
+	{
+		trimmed = GetTrimedString(line);
+
+		if (trimmed == "{") {
+			// 找到了数据开始
+			break;
+		}
+
+
+	}
+
+	// 循环读取顶点数值，直到遇到 '}'
+	int vertexIndex = 0;
+	while (std::getline(file, line))
+	{
+		trimmed = GetTrimedString(line);
+
+		if (trimmed == "}") // 数据结束
+			break;
+
+		std::istringstream iss(trimmed);
+		Vertex v;
+
+		if ((iss >> v.Position.x >> v.Position.y >> v.Position.z >> v.Normal.x >> v.Normal.y >> v.Normal.z))
+		{
+			meshData.Vertices[vertexIndex++] = v;
+		}
+		else
+		{
+			std::cerr << "Failed to parse line: " << line << "\n";
+		}
+	}
+	while (std::getline(file, line))
+	{
+		// trim左右空白后判断是否是 '{'
+		trimmed = GetTrimedString(line);
+
+		if (trimmed == "{") {
+			// 找到了数据开始
+			break;
+		}
+
+
+	}
+
+	//  循环读取顶点数值，直到遇到 '}'
+	int indiceIndex = 0;
+	while (std::getline(file, line))
+	{
+		// trim空白
+		trimmed = GetTrimedString(line);
+
+		if (trimmed == "}") // 数据结束
+			break;
+
+		std::istringstream iss(trimmed);
+		int a, b, c;
+		if ((iss >> a >> b >> c))
+		{
+			meshData.Indices32[indiceIndex++] = a;
+			meshData.Indices32[indiceIndex++] = b;
+			meshData.Indices32[indiceIndex++] = c;
+
+		}
+		else
+		{
+			std::cerr << "Failed to parse line: " << line << "\n";
+		}
+	}
 
 	return meshData;
 }
@@ -614,5 +717,12 @@ void GeometryGenerator::BuildCylinderBottomCap(float bottomRadius, float topRadi
 		meshData.Indices32.push_back(baseIndex + i);
 		meshData.Indices32.push_back(baseIndex + i + 1);
 	}
+}
+
+
+std::string GeometryGenerator::GetTrimedString(std::string text)
+{
+	size_t first = text.find_first_not_of(" \t");
+	return text.substr(first);
 }
 
