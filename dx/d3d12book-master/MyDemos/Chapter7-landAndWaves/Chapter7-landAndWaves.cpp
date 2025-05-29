@@ -6,7 +6,7 @@
 
 
 using namespace DirectX;
-int gNumFrameResources = 3;
+
 
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
@@ -387,7 +387,7 @@ void ShapesApp::BuildFrameResources()
 {
     for (size_t i = 0; i < gNumFrameResources; ++i)
     {
-        mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(), 1, mAllRitems.size(),mWaves->VertexCount()));
+        mFrameResources.push_back(FrameResource::CreateWaveWithOutMaterial(md3dDevice.Get(), 1, mAllRitems.size(),mWaves->VertexCount()));
     }
 }
 

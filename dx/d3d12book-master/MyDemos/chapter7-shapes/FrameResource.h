@@ -10,8 +10,8 @@ struct ObjectConstants
 };
 struct Vertex
 {
-	DirectX::XMFLOAT3 Pos;
-	DirectX::XMFLOAT4 Color;
+	XMFLOAT3 Pos;
+	XMFLOAT3 Normal;
 };
 struct PassConstants
 {
@@ -29,14 +29,27 @@ struct PassConstants
 	float FarZ = 0.0f;
 	float TotalTime = 0.0f;
 	float DeltaTime = 0.0f;
+
+	XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+	// Indices [0, NUM_DIR_LIGHTS) are directional lights;
+	// indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
+	// indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
+	// are spot lights for a maximum of MaxLights per object.
+	Light Lights[MaxLights];
 };
 
 struct FrameResource
 {
 public:
-	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
+	static std::unique_ptr<FrameResource> CreateWithMaterial(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
+	static std::unique_ptr<FrameResource> CreateWaveWithMaterial(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
+	static std::unique_ptr<FrameResource> CreateWithOutMaterial(ID3D12Device* device, UINT passCount, UINT objectCount);
+	static std::unique_ptr<FrameResource> CreateWaveWithOutMaterial(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+	//FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
 	//FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
-	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+	//FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+	//FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
 	FrameResource(const FrameResource& rhs) = delete;
 	FrameResource& operator=(const FrameResource& rhs) = delete;
 	~FrameResource();
@@ -50,9 +63,12 @@ public:
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
 	// 基于更新频率对常量数据分组
 	std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
+	std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
 
 	UINT64 Fence = 0;
 	// We cannot update a dynamic vertex buffer until the GPU is done processing
 	// the commands that reference it.  So each frame needs their own.
 	std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
+private:
+	FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
 };
