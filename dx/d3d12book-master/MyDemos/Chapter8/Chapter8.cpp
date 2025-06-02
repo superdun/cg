@@ -334,7 +334,7 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 
     XMVECTOR lightDir = -MathHelper::SphericalToCartesian(1.0f, mSunTheta, mSunPhi);
     XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
-    mMainPassCB.Lights[0].Strength = { 1.0f, 1.0f, 0.9f };
+    mMainPassCB.Lights[0].Strength = { 1.0f, 0.0f, 0.0f };
     auto currPassCB = mCurrentFrameResource->PassCB.get();
     currPassCB->CopyData(0, mMainPassCB);
 }
