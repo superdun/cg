@@ -55,6 +55,26 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
     return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
 }
 
+float3 CartoonBlinnPhongLight(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat){
+    const float m = mat.Shininess * 256.0f;
+    //半角向量（Half Vector）
+    float3 halfVec = normalize(toEye + lightVec);
+    //这是 Blinn-Phong 的镜面反射因子（specular term）
+    float ks = pow(max(dot(halfVec, normal), 0.0f), m);
+    float newKs = ks <= 0.1f ? 0.0f : (ks <= 0.8f ? 0.5f : 0.8f);
+    float roughnessFactor = (m + 8.0f)*newKs / 8.0f;
+    //菲涅尔反射率
+    float3 fresnelFactor = SchlickFresnel(mat.FresnelR0, halfVec, lightVec);
+    //综合反射颜色
+    float3 specAlbedo = fresnelFactor*roughnessFactor;
+
+    // Our spec formula goes outside [0,1] range, but we are 
+    // doing LDR rendering.  So scale it down a bit.
+    //避免溢出
+    specAlbedo = specAlbedo / (specAlbedo + 1.0f);
+
+    return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
+}
 
 //---------------------------------------------------------------------------------------
 // Evaluates the lighting equation for directional lights.
@@ -66,9 +86,10 @@ float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEy
 
     // Scale light down by Lambert's cosine law.
     float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
+    float newNdotL = ndotl<=0?0.4:(ndotl<=0.5?0.6:1.0);
+    float3 lightStrength = L.Strength * newNdotL;
 
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+    return CartoonBlinnPhongLight(lightStrength, lightVec, normal, toEye, mat);
 }
 
 //---------------------------------------------------------------------------------------
@@ -91,13 +112,14 @@ float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float
 
     // Scale light down by Lambert's cosine law.
     float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
+    float newNdotL = ndotl<=0?0.4:(ndotl<=0.5?0.6:1.0);
+    float3 lightStrength = L.Strength * newNdotL;
 
     // Attenuate light by distance.
     float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
     lightStrength *= att;
 
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+    return CartoonBlinnPhongLight(lightStrength, lightVec, normal, toEye, mat);
 }
 
 //---------------------------------------------------------------------------------------
@@ -120,7 +142,8 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
 
     // Scale light down by Lambert's cosine law.
     float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
+    float newNdotL = ndotl<=0?0.4:(ndotl<=0.5?0.6:1.0);
+    float3 lightStrength = L.Strength * newNdotL;
 
     // Attenuate light by distance.
     float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
@@ -130,7 +153,7 @@ float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3
     float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);
     lightStrength *= spotFactor;
 
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
+    return CartoonBlinnPhongLight(lightStrength, lightVec, normal, toEye, mat);
 }
 
 float4 ComputeLighting(Light gLights[MaxLights], Material mat,
