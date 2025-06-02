@@ -331,8 +331,6 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
     mMainPassCB.TotalTime = gt.TotalTime();
     mMainPassCB.DeltaTime = gt.DeltaTime();
     mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
-    mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-    mMainPassCB.Lights[0].Strength = { 1.0f, 1.0f, 1.0f };
 
     XMVECTOR lightDir = -MathHelper::SphericalToCartesian(1.0f, mSunTheta, mSunPhi);
     XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
