@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chapter8-shapes", "..\Chapt
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Chapter8-wave", "..\Chapter8\Chapter8.vcxproj", "{DF16B170-9E3A-419E-A61B-8277EFC7E909}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "chapter9-box", "..\chapter9-box\chapter9-box.vcxproj", "{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -101,6 +103,14 @@ Global
 		{DF16B170-9E3A-419E-A61B-8277EFC7E909}.Release|x64.Build.0 = Release|x64
 		{DF16B170-9E3A-419E-A61B-8277EFC7E909}.Release|x86.ActiveCfg = Release|Win32
 		{DF16B170-9E3A-419E-A61B-8277EFC7E909}.Release|x86.Build.0 = Release|Win32
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Debug|x64.ActiveCfg = Debug|x64
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Debug|x64.Build.0 = Debug|x64
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Debug|x86.ActiveCfg = Debug|Win32
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Debug|x86.Build.0 = Debug|Win32
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Release|x64.ActiveCfg = Release|x64
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Release|x64.Build.0 = Release|x64
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Release|x86.ActiveCfg = Release|Win32
+		{ED6AA796-DABA-4F03-8D00-8E90DC6E66C9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
