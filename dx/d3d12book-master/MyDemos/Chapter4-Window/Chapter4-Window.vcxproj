@@ -127,6 +127,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Common\d3dx12.h" />
+    <ClInclude Include="..\Common\DDSTextureLoader.h" />
     <ClInclude Include="Chapter4-Window.h" />
     <ClInclude Include="D3DApp.h" />
     <ClInclude Include="D3DUtil.h" />
@@ -136,6 +138,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="Chapter4-Window.cpp" />
     <ClCompile Include="D3DApp.cpp" />
     <ClCompile Include="D3DUtil.cpp" />

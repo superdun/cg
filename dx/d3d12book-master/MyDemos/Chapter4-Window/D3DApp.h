@@ -58,6 +58,8 @@ protected:
 	virtual void OnMouseDown(WPARAM btnState, int x, int y) {}
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) {}
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) {}
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+
 
 
 protected:

@@ -13,7 +13,8 @@
 #include <dxgi.h>
 #include <d3dcompiler.h>
 #include <wrl.h>
-#include <d3dx12.h>
+#include "../Common/d3dx12.h"
+#include "../Common/DDSTextureLoader.h"
 #include <array>
 #include <unordered_map>
 #include <memory>

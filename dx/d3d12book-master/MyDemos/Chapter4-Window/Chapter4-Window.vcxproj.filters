@@ -36,6 +36,12 @@
     <ClInclude Include="GameTimer.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\Common\d3dx12.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\DDSTextureLoader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Chapter4-Window.cpp">
@@ -48,6 +54,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="GameTimer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\DDSTextureLoader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

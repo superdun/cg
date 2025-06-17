@@ -146,6 +146,7 @@
     <ClCompile Include="..\Chapter6\MathHelper.cpp" />
     <ClCompile Include="..\chapter7-shapes\FrameResource.cpp" />
     <ClCompile Include="..\chapter7-shapes\GeometryGenerator.cpp" />
+    <ClCompile Include="..\Common\DDSTextureLoader.cpp" />
     <ClCompile Include="chapter9-box.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -155,17 +156,6 @@
     <Image Include="chapter9-box.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\Chapter1\packages\directxtk12_desktop_2019.2025.3.21.3\build\native\directxtk12_desktop_2019.targets" Condition="Exists('..\Chapter1\packages\directxtk12_desktop_2019.2025.3.21.3\build\native\directxtk12_desktop_2019.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\Chapter1\packages\directxtk12_desktop_2019.2025.3.21.3\build\native\directxtk12_desktop_2019.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\Chapter1\packages\directxtk12_desktop_2019.2025.3.21.3\build\native\directxtk12_desktop_2019.targets'))" />
-  </Target>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

@@ -449,12 +449,13 @@ void CrateApp::UpdateMainPassCB(const GameTimer& gt)
 
 void CrateApp::LoadTextures()
 {
+	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
 	auto woodCrateTex = std::make_unique<Texture>();
 	woodCrateTex->Name = "woodCrateTex";
 	woodCrateTex->Filename = L"../../Textures/WoodCrate01.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
 		mCommandList.Get(), woodCrateTex->Filename.c_str(),
-		woodCrateTex->Resource, woodCrateTex->UploadHeap));
+		woodCrateTex->Resource, UploadHeap));
  
 	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
 }

@@ -84,7 +84,7 @@ private:
     std::vector<std::unique_ptr<FrameResource>> mFrameResources;
     FrameResource* mCurrentFrameResource = nullptr;
     int mCurrentFrameResourceIndex = 0;
-
+    UINT mCbvSrvDescriptorSize = 0;
     PassConstants mMainPassCB;
     UINT mPassCbvOffset = 0;
     bool mIsWireframe = false;
@@ -152,7 +152,7 @@ bool ShapesApp::Initialize()
 
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
-
+    mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     LoadTextures();
     BuildRootSignature();
     BuildDescriptorHeaps();
@@ -250,16 +250,23 @@ void ShapesApp::UpdateCamera(const GameTimer& gt)
 
 void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
 {
-    auto currentObjectCB = mCurrentFrameResource->ObjectCB.get();
+    auto currObjectCB = mCurrentFrameResource->ObjectCB.get();
     for (auto& e : mAllRitems)
     {
+        // Only update the cbuffer data if the constants have changed.  
+        // This needs to be tracked per frame resource.
         if (e->NumFramesDirty > 0)
         {
             XMMATRIX world = XMLoadFloat4x4(&e->World);
-            //更新常量缓冲区，在cpu gpu之间传递数据
+            XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
+
             ObjectConstants objConstants;
             XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-            currentObjectCB->CopyData(e->ObjCBIndex, objConstants);
+            XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+
+            currObjectCB->CopyData(e->ObjCBIndex, objConstants);
+
+            // Next FrameResource need to be updated too.
             e->NumFramesDirty--;
         }
     }
@@ -322,58 +329,28 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 
 void ShapesApp::LoadTextures()
 {
-    ResourceUploadBatch upload(md3dDevice.Get());
-
-    upload.Begin();
-	auto woodCrateTex = std::make_unique<Texture>();
+    Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
+    auto woodCrateTex = std::make_unique<Texture>();
     woodCrateTex->Name = "woodCrateTex";
     woodCrateTex->Filename = L"../../Textures/WoodCrate01.dds";
-
-    ThrowIfFailed(DirectX::CreateDDSTextureFromFile(md3dDevice.Get(), upload,
-        woodCrateTex->Filename.c_str(),
-        woodCrateTex->Resource.ReleaseAndGetAddressOf()));
+    ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+        mCommandList.Get(), woodCrateTex->Filename.c_str(),
+        woodCrateTex->Resource, woodCrateTex->UploadHeap));
 
     mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
 }
 
 void ShapesApp::BuildMaterials()
 {
-    auto bricks0 = std::make_unique<Material>();
-    bricks0->Name = "bricks0";
-    bricks0->MatCBIndex = 0;
-    bricks0->DiffuseSrvHeapIndex = 0;
-    bricks0->DiffuseAlbedo = XMFLOAT4(Colors::ForestGreen);
-    bricks0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-    bricks0->Roughness = 0.1f;
+    auto woodCrate = std::make_unique<Material>();
+    woodCrate->Name = "woodCrate";
+    woodCrate->MatCBIndex = 0;
+    woodCrate->DiffuseSrvHeapIndex = 0;
+    woodCrate->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    woodCrate->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+    woodCrate->Roughness = 0.2f;
 
-    auto stone0 = std::make_unique<Material>();
-    stone0->Name = "stone0";
-    stone0->MatCBIndex = 1;
-    stone0->DiffuseSrvHeapIndex = 1;
-    stone0->DiffuseAlbedo = XMFLOAT4(Colors::LightSteelBlue);
-    stone0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
-    stone0->Roughness = 0.3f;
-
-    auto tile0 = std::make_unique<Material>();
-    tile0->Name = "tile0";
-    tile0->MatCBIndex = 2;
-    tile0->DiffuseSrvHeapIndex = 2;
-    tile0->DiffuseAlbedo = XMFLOAT4(Colors::LightGray);
-    tile0->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-    tile0->Roughness = 0.2f;
-
-    auto skullMat = std::make_unique<Material>();
-    skullMat->Name = "skullMat";
-    skullMat->MatCBIndex = 3;
-    skullMat->DiffuseSrvHeapIndex = 3;
-    skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-    skullMat->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
-    skullMat->Roughness = 0.3f;
-
-    mMaterials["bricks0"] = std::move(bricks0);
-    mMaterials["stone0"] = std::move(stone0);
-    mMaterials["tile0"] = std::move(tile0);
-    mMaterials["skullMat"] = std::move(skullMat);
+    mMaterials["woodCrate"] = std::move(woodCrate);
 }
 
 void ShapesApp::Update(const GameTimer& gt) {
@@ -439,6 +416,8 @@ void ShapesApp::Draw(const GameTimer& gt)
     );
     mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
+    ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvDescriptorHeap.Get() };
+    mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
     mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
@@ -482,9 +461,12 @@ void ShapesApp::BuildFrameResources()
 }
 void ShapesApp::BuildShapeGeometry()
 {
+
+
+
     GeometryGenerator geoGen;
     GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
-    
+
     //
     // We are concatenating all the geometry into one big vertex/index buffer.  So
     // define the regions in the buffer each submesh covers.
@@ -507,13 +489,13 @@ void ShapesApp::BuildShapeGeometry()
     boxSubmesh.StartIndexLocation = boxIndexOffset;
     boxSubmesh.BaseVertexLocation = boxVertexOffset;
 
-   
+
     //
     // Extract the vertex elements we are interested in and pack the
     // vertices of all the meshes into one vertex buffer.
     //
 
-    auto totalVertexCount =box.Vertices.size();
+    auto totalVertexCount = box.Vertices.size();
 
     std::vector<Vertex> vertices(totalVertexCount);
 
@@ -522,6 +504,7 @@ void ShapesApp::BuildShapeGeometry()
     {
         vertices[k].Pos = box.Vertices[i].Position;
         vertices[k].Normal = box.Vertices[i].Normal;
+        vertices[k].TexC = box.Vertices[i].TexC;
     }
 
 
@@ -563,7 +546,7 @@ void ShapesApp::BuildRenderItems()
     XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
     XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
     boxRitem->ObjCBIndex = 0;
-    boxRitem->Mat = mMaterials["stone0"].get();
+    boxRitem->Mat = mMaterials["woodCrate"].get();
     boxRitem->Geo = mGeometries["shapeGeo"].get();
     boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
@@ -592,12 +575,15 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
         cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+        CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+        tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvDescriptorSize);
+
 
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
         D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
-
-        cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
-        cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+        cmdList->SetGraphicsRootDescriptorTable(0, tex);
+        cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
+        cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 
         cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
     }
@@ -636,13 +622,27 @@ void ShapesApp::BuildDescriptorHeaps()
 
 void ShapesApp::BuildRootSignature()
 {
-    CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+
+    CD3DX12_DESCRIPTOR_RANGE texTable;
+    texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+
+    CD3DX12_ROOT_PARAMETER slotRootParameter[4];
     // Create root CBV.
-    slotRootParameter[0].InitAsConstantBufferView(0);
-    slotRootParameter[1].InitAsConstantBufferView(1);
-    slotRootParameter[2].InitAsConstantBufferView(2);
+    slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+    slotRootParameter[1].InitAsConstantBufferView(0);
+    slotRootParameter[2].InitAsConstantBufferView(1);
+    slotRootParameter[3].InitAsConstantBufferView(2);
+
+    auto staticSamplers = D3DApp::GetStaticSamplers();
     // A root signature is an array of root parameters.
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter, 0, nullptr,
+    // 构建根签名描述
+    // 4：表示根参数的数量
+    // slotRootParameter：根参数数组
+    // staticSamplers.size()：静态采样器数量
+    // staticSamplers.data()：静态采样器数据
+    // D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT：
+    // 允许使用输入汇编器输入布局 (即顶点着色器可以访问顶点缓冲区的输入布局)。
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter, staticSamplers.size(), staticSamplers.data(),
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
     ComPtr<ID3DBlob> serializedRootSig = nullptr;
     ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -722,5 +722,3 @@ void ShapesApp::BuildPSOs()
     opaqueWireframePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
     ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaqueWireframePsoDesc, IID_PPV_ARGS(&mPSOs["opaque_wireframe"])));
 }
-
-
