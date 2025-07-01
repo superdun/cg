@@ -382,8 +382,8 @@ void TexWavesApp::AnimateMaterials(const GameTimer& gt)
 	// Scroll the water material texture coordinates.
 	auto waterMat = mMaterials["water"].get();
 
-	float& tu = waterMat->MatTransform(3, 0);
-	float& tv = waterMat->MatTransform(3, 1);
+	float& tu = waterMat->MatTransform._41;
+	float& tv = waterMat->MatTransform._42;
 
 	tu += 0.1f * gt.DeltaTime();
 	tv += 0.02f * gt.DeltaTime();
