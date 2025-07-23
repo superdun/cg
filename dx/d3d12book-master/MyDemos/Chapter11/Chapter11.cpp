@@ -1039,6 +1039,7 @@ void ShapesApp::BuildPSOs()
     //
     // PSO for opaque objects.
     //
+
     ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
     opaquePsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
     opaquePsoDesc.pRootSignature = mRootSignature.Get();
@@ -1101,7 +1102,7 @@ void ShapesApp::BuildPSOs()
     mirrorDSS.DepthEnable = true;
     mirrorDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
     mirrorDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-    mirrorDSS.StencilEnable = true;
+    mirrorDSS.StencilEnable = false;
     mirrorDSS.StencilReadMask = 0xff;
     mirrorDSS.StencilWriteMask = 0xff;
 
@@ -1129,7 +1130,7 @@ void ShapesApp::BuildPSOs()
     reflectionsDSS.DepthEnable = true;
     reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     reflectionsDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-    reflectionsDSS.StencilEnable = true;
+    reflectionsDSS.StencilEnable = false;
     reflectionsDSS.StencilReadMask = 0xff;
     reflectionsDSS.StencilWriteMask = 0xff;
 
@@ -1159,7 +1160,7 @@ void ShapesApp::BuildPSOs()
     shadowDSS.DepthEnable = true;
     shadowDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     shadowDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-    shadowDSS.StencilEnable = true;
+    shadowDSS.StencilEnable = false;
     shadowDSS.StencilReadMask = 0xff;
     shadowDSS.StencilWriteMask = 0xff;
 
@@ -1177,4 +1178,6 @@ void ShapesApp::BuildPSOs()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = transparentPsoDesc;
     shadowPsoDesc.DepthStencilState = shadowDSS;
     ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
+
+
 }
