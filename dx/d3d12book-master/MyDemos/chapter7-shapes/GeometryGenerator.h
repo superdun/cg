@@ -70,7 +70,11 @@ public:
     /// face has m rows and n columns of vertices.
     ///</summary>
     MeshData CreateBox(float width, float height, float depth, uint32 numSubdivisions);
-
+    ///<summary>
+    /// Creates a Circle centered at the origin with the given radius.  The
+    /// slices and stacks parameters control the degree of tessellation.
+    ///</summary>
+    MeshData CreateCircle(float radius, uint32 sliceCount);
     ///<summary>
     /// Creates a sphere centered at the origin with the given radius.  The
     /// slices and stacks parameters control the degree of tessellation.

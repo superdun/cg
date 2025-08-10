@@ -73,19 +73,21 @@ cbuffer cbMaterial : register(b2)
     float    gRoughness;
 	float4x4 gMatTransform;
 };
- 
+
 struct VertexIn
 {
-	float3 PosW  : POSITION;
-	float2 SizeW : SIZE;
+	float3 PosL    : POSITION;
+    float3 NormalL : NORMAL;
+	float2 TexC    : TEXCOORD;
 };
 
 struct VertexOut
 {
-	float3 CenterW : POSITION;
-	float2 SizeW   : SIZE;
+	float4 PosH    : SV_POSITION;
+    float3 PosW    : POSITION;
+    float3 NormalW : NORMAL;
+	float2 TexC    : TEXCOORD;
 };
-
 struct GeoOut
 {
 	float4 PosH    : SV_POSITION;
@@ -97,59 +99,78 @@ struct GeoOut
 
 VertexOut VS(VertexIn vin)
 {
-	VertexOut vout;
+	VertexOut vout = (VertexOut)0.0f;
 
-	// Just pass data over to geometry shader.
-	vout.CenterW = vin.PosW;
-	vout.SizeW   = vin.SizeW;
+    // Transform to world space.
+    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
+    vout.PosW = posW.xyz;
 
-	return vout;
+    // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
+    vout.NormalW = mul(vin.NormalL, (float3x3)gWorld);
+
+    // Transform to homogeneous clip space.
+    vout.PosH = mul(posW, gViewProj);
+
+	// Output vertex attributes for interpolation across triangle.
+	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
+	vout.TexC = mul(texC, gMatTransform).xy;
+
+    return vout;
 }
- 
+
+
  // We expand each point into a quad (4 vertices), so the maximum number of vertices
  // we output per geometry shader invocation is 4.
-[maxvertexcount(4)]
-void GS(point VertexOut gin[1],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
+[maxvertexcount(9)]
+void GS(line  VertexOut gin[2],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
 {
-    float3 up = float3(0.0f, 1.0f, 0.0f);
-    float3 look = gEyePosW- gin[0].CenterW;
-    look.y =0.0f;
-    look = normalize(look);
-    float3 right = cross(up,look);
-    float halfWidth = 0.5f*gin[0].SizeW.x;
-    float halfHeight = 0.5f*gin[0].SizeW.y;
-    float4 v[4];
-	v[0] = float4(gin[0].CenterW + halfWidth*right - halfHeight*up, 1.0f);
-	v[1] = float4(gin[0].CenterW + halfWidth*right + halfHeight*up, 1.0f);
-	v[2] = float4(gin[0].CenterW - halfWidth*right - halfHeight*up, 1.0f);
-	v[3] = float4(gin[0].CenterW - halfWidth*right + halfHeight*up, 1.0f);
-    float2 texC[4] = {
-        float2(0.0f, 1.0f),
-		float2(0.0f, 0.0f),
-		float2(1.0f, 1.0f),
-		float2(1.0f, 0.0f)
-    };
     GeoOut gout;
-    [unroll]
-    for(int i = 0; i < 4; ++i)
-	{
-		gout.PosH     = mul(v[i], gViewProj);
-		gout.PosW     = v[i].xyz;
-		gout.NormalW  = look;
-		gout.TexC     = texC[i];
-		gout.PrimID   = primID;
-		
-		triStream.Append(gout);
-	}
+    // 线段端点位置
+    float3 p0 = gin[0].PosW;
+    float3 p1 = gin[1].PosW;
+    // 线段方向
+    float3 dir = normalize(p1 - p0);
+    float d = distance(p1, p0)/2;
+    // 假设up方向是Y方向
+    float3 up = float3(0, 1, 0);
+    // 计算垂直于线段方向的法线
+    float3 normalDir = normalize(cross(dir, up));
+    // 按钮大小相乘得到偏移距离，这里用平均大小的x分量为垂直方向偏移距离
+    float size =2;
+    // 构造三角形三个顶点的位置
+    float3 v0 = p0;
+    float3 v1 = p1;
+    float3 v2 = (p0 + p1) * 0.5 + up * size;
+    float3 v3 = v2+d * dir;
+    float3 v4 = v2 -d * dir;
+
+    // 计算对应的法线，假设法线都为垂直方向，或者用某策略赋值
+    float3 normal = normalize(cross(v1 - v0, v2 - v0));
+
+    // 输出第一个三角形
+    gout.PosW = v0; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v0,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
+    gout.PosW = v1; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v1,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
+    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
+    triStream.RestartStrip();   // 结束第一个三角形
+
+    gout.PosW = v0; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v0,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
+    gout.PosW = v4; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v4,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
+    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
+    triStream.RestartStrip();   // 结束第二个三角形
+
+    gout.PosW = v1; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v1,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
+    gout.PosW = v3; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v3,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
+    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
+    triStream.RestartStrip();   // 结束第3个三角形
 }
 
 float4 PS(GeoOut pin) : SV_Target
 {
 	float3 uvw = float3(pin.TexC, pin.PrimID%3);
-    float4 diffuseAlbedo = gTreeMapArray.Sample(gsamAnisotropicWrap, uvw) * gDiffuseAlbedo;
-	
+    float4 diffuseAlbedo = float4(0.4f, 0.6f, 0.8f, 1.0f);;
+
 #ifdef ALPHA_TEST
-	// Discard pixel if texture alpha < 0.1.  We do this test as soon 
+	// Discard pixel if texture alpha < 0.1.  We do this test as soon
 	// as possible in the shader so that we can potentially exit the
 	// shader early, thereby skipping the rest of the shader code.
 	clip(diffuseAlbedo.a - 0.1f);
@@ -158,7 +179,7 @@ float4 PS(GeoOut pin) : SV_Target
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
 
-    // Vector from point being lit to eye. 
+    // Vector from point being lit to eye.
 	float3 toEyeW = gEyePosW - pin.PosW;
 	float distToEye = length(toEyeW);
 	toEyeW /= distToEye; // normalize

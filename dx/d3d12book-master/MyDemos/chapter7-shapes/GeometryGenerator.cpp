@@ -92,6 +92,39 @@ GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float heig
 
 	return meshData;
 }
+GeometryGenerator::MeshData GeometryGenerator::CreateCircle(float radius, uint32 sliceCount)
+{
+	MeshData meshData;
+	float thetaStep = 2.0f * XM_PI / sliceCount;
+	for (uint32 i = 0; i <= sliceCount; ++i)
+	{
+		float theta = i * thetaStep;
+
+		Vertex v;
+
+		// spherical to cartesian
+		v.Position.x = radius * cosf(theta);
+		v.Position.y = 0.0f;
+		v.Position.z = radius *  sinf(theta);
+
+		// Partial derivative of P with respect to theta
+		v.TangentU.x = -radius  * sinf(theta);
+		v.TangentU.y = 0.0f;
+		v.TangentU.z = +radius  * cosf(theta);
+
+		XMVECTOR T = XMLoadFloat3(&v.TangentU);
+		XMStoreFloat3(&v.TangentU, XMVector3Normalize(T));
+
+		XMVECTOR p = XMLoadFloat3(&v.Position);
+		XMStoreFloat3(&v.Normal, XMVector3Normalize(p));
+
+		v.TexC.x = theta / XM_2PI;
+		v.TexC.y = 0;
+
+		meshData.Vertices.push_back(v);
+	}
+	return meshData;
+}
 GeometryGenerator::MeshData GeometryGenerator::CreateSphere(float radius, uint32 sliceCount, uint32 stackCount)
 {
 	MeshData meshData;

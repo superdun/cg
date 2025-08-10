@@ -77,6 +77,7 @@ private:
     void BuildLandGeometry();
     void BuildWavesGeometry();
     void BuildBoxGeometry();
+    void BuildCircleGeometry();
     void BuildTreeSpritesGeometry();
     void BuildRenderItems();
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
@@ -176,6 +177,7 @@ bool ShapesApp::Initialize()
     BuildLandGeometry();
     BuildWavesGeometry();
     BuildBoxGeometry();
+	BuildCircleGeometry();
     BuildTreeSpritesGeometry();
     BuildMaterials();
     BuildRenderItems();
@@ -467,7 +469,7 @@ void ShapesApp::Update(const GameTimer& gt) {
     UpdateObjectCBs(gt);
     UpdateMaterialCBs(gt);
     UpdateMainPassCB(gt);
-    UpdateWaves(gt);
+    //UpdateWaves(gt);
 }
 void ShapesApp::UpdateWaves(const GameTimer& gt)
 {
@@ -556,12 +558,12 @@ void ShapesApp::Draw(const GameTimer& gt)
 
     DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
-    mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
+    //mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
+    //DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
     mCommandList->SetPipelineState(mPSOs["treeSprites"].Get());
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites]);
-    mCommandList->SetPipelineState(mPSOs["transparent"].Get());
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
+    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+    //mCommandList->SetPipelineState(mPSOs["transparent"].Get());
+    //DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
     mCommandList->ResourceBarrier(
         1,
@@ -755,7 +757,54 @@ void ShapesApp::BuildBoxGeometry()
 
     mGeometries["boxGeo"] = std::move(geo);
 }
+void ShapesApp::BuildCircleGeometry()
+{
+    GeometryGenerator geoGen;
+    GeometryGenerator::MeshData circle = geoGen.CreateCircle(3.0f, 10);
 
+    std::vector<Vertex> vertices(circle.Vertices.size());
+    for (size_t i = 0; i < circle.Vertices.size(); ++i)
+    {
+        auto& p = circle.Vertices[i].Position;
+        vertices[i].Pos = p;
+        vertices[i].Normal = circle.Vertices[i].Normal;
+        vertices[i].TexC = circle.Vertices[i].TexC;
+    }
+
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+
+    //std::vector<std::uint16_t> indices = circle.GetIndices16();
+    //const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+    auto geo = std::make_unique<MeshGeometry>();
+    geo->Name = "circleGeo";
+
+    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+    //ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+    //CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+    geo->VertexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+        mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+
+    //geo->IndexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
+    //    mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+
+    geo->VertexByteStride = sizeof(Vertex);
+    geo->VertexBufferByteSize = vbByteSize;
+    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    geo->IndexBufferByteSize = 0;
+
+    SubmeshGeometry submesh;
+    submesh.IndexCount = vertices.size();
+    submesh.StartIndexLocation = 0;
+    submesh.BaseVertexLocation = 0;
+
+    geo->DrawArgs["circle"] = submesh;
+
+    mGeometries[geo->Name] = std::move(geo);
+}
 void ShapesApp::BuildTreeSpritesGeometry()
 {
     struct TreeSpriteVertex
@@ -819,62 +868,62 @@ void ShapesApp::BuildTreeSpritesGeometry()
 }
 void ShapesApp::BuildRenderItems()
 {
-    auto wavesRitem = std::make_unique<RenderItem>();
-    wavesRitem->World = MathHelper::Identity4x4();
-    XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-    wavesRitem->ObjCBIndex = 0;
-    wavesRitem->Mat = mMaterials["water"].get();
-    wavesRitem->Geo = mGeometries["waterGeo"].get();
-    wavesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    wavesRitem->IndexCount = wavesRitem->Geo->DrawArgs["grid"].IndexCount;
-    wavesRitem->StartIndexLocation = wavesRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    wavesRitem->BaseVertexLocation = wavesRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+    //auto wavesRitem = std::make_unique<RenderItem>();
+    //wavesRitem->World = MathHelper::Identity4x4();
+    //XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+    //wavesRitem->ObjCBIndex = 0;
+    //wavesRitem->Mat = mMaterials["water"].get();
+    //wavesRitem->Geo = mGeometries["waterGeo"].get();
+    //wavesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    //wavesRitem->IndexCount = wavesRitem->Geo->DrawArgs["grid"].IndexCount;
+    //wavesRitem->StartIndexLocation = wavesRitem->Geo->DrawArgs["grid"].StartIndexLocation;
+    //wavesRitem->BaseVertexLocation = wavesRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 
-    mWavesRitem = wavesRitem.get();
+    //mWavesRitem = wavesRitem.get();
 
-    mRitemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
+    //mRitemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
 
-    auto gridRitem = std::make_unique<RenderItem>();
-    gridRitem->World = MathHelper::Identity4x4();
-    XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-    gridRitem->ObjCBIndex = 1;
-    gridRitem->Mat = mMaterials["grass"].get();
-    gridRitem->Geo = mGeometries["landGeo"].get();
-    gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-    gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+    //auto gridRitem = std::make_unique<RenderItem>();
+    //gridRitem->World = MathHelper::Identity4x4();
+    //XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+    //gridRitem->ObjCBIndex = 1;
+    //gridRitem->Mat = mMaterials["grass"].get();
+    //gridRitem->Geo = mGeometries["landGeo"].get();
+    //gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    //gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
+    //gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
+    //gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 
-    mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
+    //mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
 
     auto boxRitem = std::make_unique<RenderItem>();
     XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(3.0f, 2.0f, -9.0f));
-    boxRitem->ObjCBIndex = 2;
+    boxRitem->ObjCBIndex = 0;
     boxRitem->Mat = mMaterials["wirefence"].get();
-    boxRitem->Geo = mGeometries["boxGeo"].get();
-    boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
-    boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-    boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+    boxRitem->Geo = mGeometries["circleGeo"].get();
+    boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
+    boxRitem->IndexCount = boxRitem->Geo->DrawArgs["circle"].IndexCount;
+    boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["circle"].StartIndexLocation;
+    boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["circle"].BaseVertexLocation;
 
-    mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());
+    mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 
-    auto treeSpritesRitem = std::make_unique<RenderItem>();
-    treeSpritesRitem->World = MathHelper::Identity4x4();
-    treeSpritesRitem->ObjCBIndex = 3;
-    treeSpritesRitem->Mat = mMaterials["treeSprites"].get();
-    treeSpritesRitem->Geo = mGeometries["treeSpritesGeo"].get();
-    treeSpritesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-    treeSpritesRitem->IndexCount = treeSpritesRitem->Geo->DrawArgs["points"].IndexCount;
-    treeSpritesRitem->StartIndexLocation = treeSpritesRitem->Geo->DrawArgs["points"].StartIndexLocation;
-    treeSpritesRitem->BaseVertexLocation = treeSpritesRitem->Geo->DrawArgs["points"].BaseVertexLocation;
+    //auto treeSpritesRitem = std::make_unique<RenderItem>();
+    //treeSpritesRitem->World = MathHelper::Identity4x4();
+    //treeSpritesRitem->ObjCBIndex = 3;
+    //treeSpritesRitem->Mat = mMaterials["treeSprites"].get();
+    //treeSpritesRitem->Geo = mGeometries["treeSpritesGeo"].get();
+    //treeSpritesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
+    //treeSpritesRitem->IndexCount = treeSpritesRitem->Geo->DrawArgs["points"].IndexCount;
+    //treeSpritesRitem->StartIndexLocation = treeSpritesRitem->Geo->DrawArgs["points"].StartIndexLocation;
+    //treeSpritesRitem->BaseVertexLocation = treeSpritesRitem->Geo->DrawArgs["points"].BaseVertexLocation;
 
-    mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeSpritesRitem.get());
+    //mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeSpritesRitem.get());
 
-    mAllRitems.push_back(std::move(wavesRitem));
-    mAllRitems.push_back(std::move(gridRitem));
+    //mAllRitems.push_back(std::move(wavesRitem));
+    //mAllRitems.push_back(std::move(gridRitem));
     mAllRitems.push_back(std::move(boxRitem));
-    mAllRitems.push_back(std::move(treeSpritesRitem));
+    //mAllRitems.push_back(std::move(treeSpritesRitem));
 }
 
 void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
@@ -891,7 +940,7 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         auto ri = ritems[i];
 
         cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
-        cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
+        //cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
         CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
         tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvDescriptorSize);
@@ -903,7 +952,7 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
         cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 
-        cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+        cmdList->DrawInstanced(ri->IndexCount, 1,  ri->BaseVertexLocation, 0);
     }
 }
 
@@ -1021,11 +1070,11 @@ void ShapesApp::BuildShadersAndInputLayout()
 
     mShaders["standardVS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
     mShaders["opaquePS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
-    mShaders["alphaTestedPS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
+    //mShaders["alphaTestedPS"] = D3DUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
 
     mShaders["treeSpriteVS"] = D3DUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
     mShaders["treeSpriteGS"] = D3DUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
-    mShaders["treeSpritePS"] = D3DUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_0");
+    mShaders["treeSpritePS"] = D3DUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", defines, "PS", "ps_5_0");
 
     mInputLayout =
     {
@@ -1036,7 +1085,8 @@ void ShapesApp::BuildShadersAndInputLayout()
     mTreeSpriteInputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 }
 
@@ -1064,7 +1114,7 @@ void ShapesApp::BuildPSOs()
     opaquePsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     opaquePsoDesc.SampleMask = UINT_MAX;
-    opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     opaquePsoDesc.NumRenderTargets = 1;
     opaquePsoDesc.RTVFormats[0] = mBackBufferFormat;
     opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
@@ -1078,34 +1128,34 @@ void ShapesApp::BuildPSOs()
     // PSO for opaque wireframe objects.
     //
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentPsoDesc = opaquePsoDesc;
-    D3D12_RENDER_TARGET_BLEND_DESC transparentBlendDesc;
-    transparentBlendDesc.BlendEnable = true;
-    transparentBlendDesc.LogicOpEnable = false;
-    transparentBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    transparentBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-    transparentBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
-    transparentBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
-    transparentBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
-    transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
-    transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    //D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentPsoDesc = opaquePsoDesc;
+    //D3D12_RENDER_TARGET_BLEND_DESC transparentBlendDesc;
+    //transparentBlendDesc.BlendEnable = true;
+    //transparentBlendDesc.LogicOpEnable = false;
+    //transparentBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    //transparentBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    //transparentBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+    //transparentBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+    //transparentBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+    //transparentBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    //transparentBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+    //transparentBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-    transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
-    ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&mPSOs["transparent"])));
+    //transparentPsoDesc.BlendState.RenderTarget[0] = transparentBlendDesc;
+    //ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&mPSOs["transparent"])));
 
     //
     // PSO for alpha tested objects
     //
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaTestedPsoDesc = opaquePsoDesc;
-    alphaTestedPsoDesc.PS =
-    {
-        reinterpret_cast<BYTE*>(mShaders["alphaTestedPS"]->GetBufferPointer()),
-        mShaders["alphaTestedPS"]->GetBufferSize()
-    };
-    alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
+    //D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaTestedPsoDesc = opaquePsoDesc;
+    //alphaTestedPsoDesc.PS =
+    //{
+    //    reinterpret_cast<BYTE*>(mShaders["alphaTestedPS"]->GetBufferPointer()),
+    //    mShaders["alphaTestedPS"]->GetBufferSize()
+    //};
+    //alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    //ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 
     //
     // PSO for tree sprites
@@ -1126,7 +1176,7 @@ void ShapesApp::BuildPSOs()
         reinterpret_cast<BYTE*>(mShaders["treeSpritePS"]->GetBufferPointer()),
         mShaders["treeSpritePS"]->GetBufferSize()
     };
-    treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+    treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     treeSpritePsoDesc.InputLayout = { mTreeSpriteInputLayout.data(), (UINT)mTreeSpriteInputLayout.size() };
     treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 
