@@ -134,65 +134,15 @@ void OutputVertex(float3 pos, uint primID, inout TriangleStream<GeoOut> triStrea
     gout.TexC = float2(0, 0); // or compute UV coords properly if needed
     triStream.Append(gout);
 }
-void SubdivideTriangleToSphere(
-    float3 p0,
-    float3 p1,
-    float3 p2,
-    uint primID,
-    inout TriangleStream<GeoOut> triStream,
-    int depth,
-    int endDepth
-    )
-{
-    float3 center = float3(0,0,0);
-    float radius = 8.0f;
-    float3 v0 = ProjectToSphere(p0, center, radius);
-    float3 v1 = ProjectToSphere(p1, center, radius);
-    float3 v2 = ProjectToSphere(p2, center, radius);
-    float3 m0 = ProjectToSphere((v0 + v1) * 0.5f, center, radius);
-    float3 m1 = ProjectToSphere((v1 + v2) * 0.5f, center, radius);
-    float3 m2 = ProjectToSphere((v2 + v0) * 0.5f, center, radius);
-    if(depth==endDepth)
-    {
-        OutputVertex(v0, primID, triStream);
-        OutputVertex(m0, primID, triStream);
-        OutputVertex(m2, primID, triStream);
-        triStream.RestartStrip();
-        OutputVertex(m0, primID, triStream);
-        OutputVertex(v1, primID, triStream);
-        OutputVertex(m1, primID, triStream);
-        triStream.RestartStrip();
-        OutputVertex(m2, primID, triStream);
-        OutputVertex(m1, primID, triStream);
-        OutputVertex(v2, primID, triStream);
-        triStream.RestartStrip();
-        OutputVertex(m0, primID, triStream);
-        OutputVertex(m1, primID, triStream);
-        OutputVertex(m2, primID, triStream);
-        triStream.RestartStrip();
-        return;
-    }
-    else{
-                // 还未达到细分深度，继续递归
-        SubdivideTriangleToSphere(v0, m0, m2, primID, triStream, depth + 1, endDepth);
-        SubdivideTriangleToSphere(m0, v1, m1, primID, triStream, depth + 1, endDepth);
-        SubdivideTriangleToSphere(m2, m1, v2, primID, triStream, depth + 1, endDepth);
-        SubdivideTriangleToSphere(m0, m1, m2, primID, triStream, depth + 1, endDepth);
-    }
-
-
-}
- // We expand each point into a quad (4 vertices), so the maximum number of vertices
- // we output per geometry shader invocation is 4.
-[maxvertexcount(12)]
+[maxvertexcount(48)]
 void GS(triangle  VertexOut gin[3],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
 {
-
     float3 center = float3(0, 0, 0);
+    float radius = 8.0f; // This was hardcoded in SubdivideTriangleToSphere, so keeping it here.
     float distToCenter = length(gEyePosW - center);
     float subdivisionDistance1 = 25.0f; // 最近，最大细分
-    float subdivisionDistance2 = 40.0f;
-    float subdivisionDistance3 = 55.0f;
+    float subdivisionDistance2 = 50.0f;
+    float subdivisionDistance3 = 90.0f;
     int subdivLevel = 0;
     if (distToCenter < subdivisionDistance1)
         subdivLevel = 3; // 最深细分，比如 3 次递归
@@ -202,13 +152,20 @@ void GS(triangle  VertexOut gin[3],uint primID : SV_PrimitiveID, inout TriangleS
         subdivLevel = 1; // 低细分
     else
         subdivLevel = 0; // 不细分
-    if (subdivLevel > 0)
+    // Get initial vertices
+    float3 v0_orig = ProjectToSphere(gin[0].PosW, center, radius);
+    float3 v1_orig = ProjectToSphere(gin[1].PosW, center, radius);
+    float3 v2_orig = ProjectToSphere(gin[2].PosW, center, radius);
+    // Array to store triangles for current level of subdivision
+    // A single level of subdivision produces 4 triangles from 1.
+    // Max level 3 means 4^3 = 64 triangles.
+    // Max number of vertices = 64 * 3 = 192.
+    // This array will hold the vertices of the triangles to be processed in the current "level" of iteration.
+    // Since we can't dynamically size arrays, we'll need to define a large enough array for the max level.
+    // A simpler approach for limited levels is manual unrolling as below.
+    if (subdivLevel == 0)
     {
-        SubdivideTriangleToSphere(gin[0].PosW, gin[1].PosW, gin[2].PosW, primID, triStream, 0, subdivLevel);
-    }
-    else
-    {
-        // 视距较远，直接输出原始三角形（不细分）
+        // No subdivision, output original triangle
         GeoOut gout;
         [unroll]
         for (int i = 0; i < 3; ++i)
@@ -222,6 +179,70 @@ void GS(triangle  VertexOut gin[3],uint primID : SV_PrimitiveID, inout TriangleS
         }
         triStream.RestartStrip();
     }
+    else if (subdivLevel == 1)
+    {
+        // Subdivide once (from 1 triangle to 4)
+        float3 m0 = ProjectToSphere((v0_orig + v1_orig) * 0.5f, center, radius);
+        float3 m1 = ProjectToSphere((v1_orig + v2_orig) * 0.5f, center, radius);
+        float3 m2 = ProjectToSphere((v2_orig + v0_orig) * 0.5f, center, radius);
+        // 4 new triangles
+        OutputVertex(v0_orig, primID, triStream); OutputVertex(m0, primID, triStream); OutputVertex(m2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(m0, primID, triStream); OutputVertex(v1_orig, primID, triStream); OutputVertex(m1, primID, triStream); triStream.RestartStrip();
+        OutputVertex(m2, primID, triStream); OutputVertex(m1, primID, triStream); OutputVertex(v2_orig, primID, triStream); triStream.RestartStrip();
+        OutputVertex(m0, primID, triStream); OutputVertex(m1, primID, triStream); OutputVertex(m2, primID, triStream); triStream.RestartStrip();
+    }
+    else if (subdivLevel == 2)
+    {
+        // Subdivide twice (from 1 triangle to 16)
+        // Level 1 triangles
+        float3 l1_t0_v0=v0_orig, l1_t0_v1, l1_t0_v2;
+        float3 l1_t1_v0, l1_t1_v1=v1_orig, l1_t1_v2;
+        float3 l1_t2_v0, l1_t2_v1, l1_t2_v2=v2_orig;
+        float3 l1_t3_v0, l1_t3_v1, l1_t3_v2;
+        float3 m0_l1 = ProjectToSphere((v0_orig + v1_orig) * 0.5f, center, radius);
+        float3 m1_l1 = ProjectToSphere((v1_orig + v2_orig) * 0.5f, center, radius);
+        float3 m2_l1 = ProjectToSphere((v2_orig + v0_orig) * 0.5f, center, radius);
+        l1_t0_v1 = m0_l1; l1_t0_v2 = m2_l1; // T0: (v0, m0, m2)
+        l1_t1_v0 = m0_l1; l1_t1_v2 = m1_l1; // T1: (m0, v1, m1)
+        l1_t2_v0 = m2_l1; l1_t2_v1 = m1_l1; // T2: (m2, m1, v2)
+        l1_t3_v0 = m0_l1; l1_t3_v1 = m1_l1; l1_t3_v2 = m2_l1; // T3: (m0, m1, m2)
+        // Subdivide each of the 4 triangles from Level 1
+        // Using a helper macro or inline function for this would make it cleaner, but GS limitations...
+        // We'll have to repeat the subdivision logic 4 times.
+        // --- Subdivide T0 (v0_orig, m0_l1, m2_l1) ---
+        float3 t0_m0 = ProjectToSphere((l1_t0_v0 + l1_t0_v1) * 0.5f, center, radius);
+        float3 t0_m1 = ProjectToSphere((l1_t0_v1 + l1_t0_v2) * 0.5f, center, radius);
+        float3 t0_m2 = ProjectToSphere((l1_t0_v2 + l1_t0_v0) * 0.5f, center, radius);
+        OutputVertex(l1_t0_v0, primID, triStream); OutputVertex(t0_m0, primID, triStream); OutputVertex(t0_m2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t0_m0, primID, triStream); OutputVertex(l1_t0_v1, primID, triStream); OutputVertex(t0_m1, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t0_m2, primID, triStream); OutputVertex(t0_m1, primID, triStream); OutputVertex(l1_t0_v2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t0_m0, primID, triStream); OutputVertex(t0_m1, primID, triStream); OutputVertex(t0_m2, primID, triStream); triStream.RestartStrip();
+        // --- Subdivide T1 (m0_l1, v1_orig, m1_l1) ---
+        float3 t1_m0 = ProjectToSphere((l1_t1_v0 + l1_t1_v1) * 0.5f, center, radius);
+        float3 t1_m1 = ProjectToSphere((l1_t1_v1 + l1_t1_v2) * 0.5f, center, radius);
+        float3 t1_m2 = ProjectToSphere((l1_t1_v2 + l1_t1_v0) * 0.5f, center, radius);
+        OutputVertex(l1_t1_v0, primID, triStream); OutputVertex(t1_m0, primID, triStream); OutputVertex(t1_m2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t1_m0, primID, triStream); OutputVertex(l1_t1_v1, primID, triStream); OutputVertex(t1_m1, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t1_m2, primID, triStream); OutputVertex(t1_m1, primID, triStream); OutputVertex(l1_t1_v2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t1_m0, primID, triStream); OutputVertex(t1_m1, primID, triStream); OutputVertex(t1_m2, primID, triStream); triStream.RestartStrip();
+        // --- Subdivide T2 (m2_l1, m1_l1, v2_orig) ---
+        float3 t2_m0 = ProjectToSphere((l1_t2_v0 + l1_t2_v1) * 0.5f, center, radius);
+        float3 t2_m1 = ProjectToSphere((l1_t2_v1 + l1_t2_v2) * 0.5f, center, radius);
+        float3 t2_m2 = ProjectToSphere((l1_t2_v2 + l1_t2_v0) * 0.5f, center, radius);
+        OutputVertex(l1_t2_v0, primID, triStream); OutputVertex(t2_m0, primID, triStream); OutputVertex(t2_m2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t2_m0, primID, triStream); OutputVertex(l1_t2_v1, primID, triStream); OutputVertex(t2_m1, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t2_m2, primID, triStream); OutputVertex(t2_m1, primID, triStream); OutputVertex(l1_t2_v2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t2_m0, primID, triStream); OutputVertex(t2_m1, primID, triStream); OutputVertex(t2_m2, primID, triStream); triStream.RestartStrip();
+        // --- Subdivide T3 (m0_l1, m1_l1, m2_l1) ---
+        float3 t3_m0 = ProjectToSphere((l1_t3_v0 + l1_t3_v1) * 0.5f, center, radius);
+        float3 t3_m1 = ProjectToSphere((l1_t3_v1 + l1_t3_v2) * 0.5f, center, radius);
+        float3 t3_m2 = ProjectToSphere((l1_t3_v2 + l1_t3_v0) * 0.5f, center, radius);
+        OutputVertex(l1_t3_v0, primID, triStream); OutputVertex(t3_m0, primID, triStream); OutputVertex(t3_m2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t3_m0, primID, triStream); OutputVertex(l1_t3_v1, primID, triStream); OutputVertex(t3_m1, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t3_m2, primID, triStream); OutputVertex(t3_m1, primID, triStream); OutputVertex(l1_t3_v2, primID, triStream); triStream.RestartStrip();
+        OutputVertex(t3_m0, primID, triStream); OutputVertex(t3_m1, primID, triStream); OutputVertex(t3_m2, primID, triStream); triStream.RestartStrip();
+    }
+
 }
 
 float4 PS(GeoOut pin) : SV_Target
@@ -229,12 +250,7 @@ float4 PS(GeoOut pin) : SV_Target
 	float3 uvw = float3(pin.TexC, pin.PrimID%3);
     float4 diffuseAlbedo = float4(0.4f, 0.6f, 0.8f, 1.0f);;
 
-#ifdef ALPHA_TEST
-	// Discard pixel if texture alpha < 0.1.  We do this test as soon
-	// as possible in the shader so that we can potentially exit the
-	// shader early, thereby skipping the rest of the shader code.
-	clip(diffuseAlbedo.a - 0.1f);
-#endif
+
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
@@ -254,11 +270,6 @@ float4 PS(GeoOut pin) : SV_Target
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
-
-#ifdef FOG
-	float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
-	litColor = lerp(litColor, gFogColor, fogAmount);
-#endif
 
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;
