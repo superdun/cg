@@ -76,8 +76,9 @@ private:
     void BuildFrameResources();
     void BuildLandGeometry();
     void BuildWavesGeometry();
-    void BuildBoxGeometry();
-    void BuildCircleGeometry();
+
+    void BuildBallGeometry();
+
     void BuildTreeSpritesGeometry();
     void BuildRenderItems();
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
@@ -176,8 +177,7 @@ bool ShapesApp::Initialize()
     BuildShadersAndInputLayout();
     BuildLandGeometry();
     BuildWavesGeometry();
-    BuildBoxGeometry();
-	BuildCircleGeometry();
+	BuildBallGeometry();
     BuildTreeSpritesGeometry();
     BuildMaterials();
     BuildRenderItems();
@@ -517,7 +517,7 @@ void ShapesApp::Draw(const GameTimer& gt)
     //命令列表分配器准备好重新使用之前分配的内存，可以用来存储新命令
     // 重置命令列表并使用特定的 PSO 作为初始状态
     ThrowIfFailed(cmdListAlloc->Reset());
-    ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
+    ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["treeSprites"].Get()));
 
 
 
@@ -560,8 +560,8 @@ void ShapesApp::Draw(const GameTimer& gt)
 
     //mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
     //DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
-    mCommandList->SetPipelineState(mPSOs["treeSprites"].Get());
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+    //mCommandList->SetPipelineState(mPSOs["treeSprites"].Get());
+    //DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
     //mCommandList->SetPipelineState(mPSOs["transparent"].Get());
     //DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
@@ -709,27 +709,27 @@ void ShapesApp::BuildWavesGeometry()
     mGeometries["waterGeo"] = std::move(geo);
 }
 
-void ShapesApp::BuildBoxGeometry()
+void ShapesApp::BuildBallGeometry()
 {
     GeometryGenerator geoGen;
-    GeometryGenerator::MeshData box = geoGen.CreateBox(8.0f, 8.0f, 8.0f, 3);
+    GeometryGenerator::MeshData ball = geoGen.CreateSphere(8.0f, 8.0f, 8.0f);
 
-    std::vector<Vertex> vertices(box.Vertices.size());
-    for (size_t i = 0; i < box.Vertices.size(); ++i)
+    std::vector<Vertex> vertices(ball.Vertices.size());
+    for (size_t i = 0; i < ball.Vertices.size(); ++i)
     {
-        auto& p = box.Vertices[i].Position;
+        auto& p = ball.Vertices[i].Position;
         vertices[i].Pos = p;
-        vertices[i].Normal = box.Vertices[i].Normal;
-        vertices[i].TexC = box.Vertices[i].TexC;
+        vertices[i].Normal = ball.Vertices[i].Normal;
+        vertices[i].TexC = ball.Vertices[i].TexC;
     }
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 
-    std::vector<std::uint16_t> indices = box.GetIndices16();
+    std::vector<std::uint16_t> indices = ball.GetIndices16();
     const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
     auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "boxGeo";
+    geo->Name = "ballGeo";
 
     ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
     CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -753,58 +753,12 @@ void ShapesApp::BuildBoxGeometry()
     submesh.StartIndexLocation = 0;
     submesh.BaseVertexLocation = 0;
 
-    geo->DrawArgs["box"] = submesh;
+    geo->DrawArgs["ball"] = submesh;
 
-    mGeometries["boxGeo"] = std::move(geo);
+    mGeometries["ballGeo"] = std::move(geo);
 }
-void ShapesApp::BuildCircleGeometry()
-{
-    GeometryGenerator geoGen;
-    GeometryGenerator::MeshData circle = geoGen.CreateCircle(3.0f, 10);
 
-    std::vector<Vertex> vertices(circle.Vertices.size());
-    for (size_t i = 0; i < circle.Vertices.size(); ++i)
-    {
-        auto& p = circle.Vertices[i].Position;
-        vertices[i].Pos = p;
-        vertices[i].Normal = circle.Vertices[i].Normal;
-        vertices[i].TexC = circle.Vertices[i].TexC;
-    }
 
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-
-    //std::vector<std::uint16_t> indices = circle.GetIndices16();
-    //const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
-
-    auto geo = std::make_unique<MeshGeometry>();
-    geo->Name = "circleGeo";
-
-    ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
-    CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-
-    //ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-    //CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-
-    geo->VertexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
-        mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-
-    //geo->IndexBufferGPU = D3DUtil::CreateDefaultBuffer(md3dDevice.Get(),
-    //    mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-
-    geo->VertexByteStride = sizeof(Vertex);
-    geo->VertexBufferByteSize = vbByteSize;
-    geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-    geo->IndexBufferByteSize = 0;
-
-    SubmeshGeometry submesh;
-    submesh.IndexCount = vertices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
-
-    geo->DrawArgs["circle"] = submesh;
-
-    mGeometries[geo->Name] = std::move(geo);
-}
 void ShapesApp::BuildTreeSpritesGeometry()
 {
     struct TreeSpriteVertex
@@ -897,14 +851,14 @@ void ShapesApp::BuildRenderItems()
     //mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
 
     auto boxRitem = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(3.0f, 2.0f, -9.0f));
+    XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(0.0f, 0.0f, 0.0f));
     boxRitem->ObjCBIndex = 0;
     boxRitem->Mat = mMaterials["wirefence"].get();
-    boxRitem->Geo = mGeometries["circleGeo"].get();
-    boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
-    boxRitem->IndexCount = boxRitem->Geo->DrawArgs["circle"].IndexCount;
-    boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["circle"].StartIndexLocation;
-    boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["circle"].BaseVertexLocation;
+    boxRitem->Geo = mGeometries["ballGeo"].get();
+    boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+    boxRitem->IndexCount = boxRitem->Geo->DrawArgs["ball"].IndexCount;
+    boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["ball"].StartIndexLocation;
+    boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["ball"].BaseVertexLocation;
 
     mRitemLayer[(int)RenderLayer::Opaque].push_back(boxRitem.get());
 
@@ -940,7 +894,7 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         auto ri = ritems[i];
 
         cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
-        //cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
+        cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
         cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
         CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
         tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvDescriptorSize);
@@ -952,7 +906,12 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
         cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
         cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 
-        cmdList->DrawInstanced(ri->IndexCount, 1,  ri->BaseVertexLocation, 0);
+        cmdList->DrawIndexedInstanced(
+            ri->IndexCount,         // number of indices to pull
+            1,                      // instance count
+            ri->StartIndexLocation, // where in the index buffer to start
+            ri->BaseVertexLocation, // the offset added to each index to fetch from VB
+            0);
     }
 }
 
@@ -1109,12 +1068,14 @@ void ShapesApp::BuildPSOs()
     {
         reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
         mShaders["opaquePS"]->GetBufferSize()
-    };
-    opaquePsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    }; 
+    auto rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME; // <-- 改这里为线框
+    opaquePsoDesc.RasterizerState = rasterizerDesc;
     opaquePsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     opaquePsoDesc.SampleMask = UINT_MAX;
-    opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     opaquePsoDesc.NumRenderTargets = 1;
     opaquePsoDesc.RTVFormats[0] = mBackBufferFormat;
     opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
@@ -1176,7 +1137,7 @@ void ShapesApp::BuildPSOs()
         reinterpret_cast<BYTE*>(mShaders["treeSpritePS"]->GetBufferPointer()),
         mShaders["treeSpritePS"]->GetBufferSize()
     };
-    treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     treeSpritePsoDesc.InputLayout = { mTreeSpriteInputLayout.data(), (UINT)mTreeSpriteInputLayout.size() };
     treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 

@@ -112,7 +112,8 @@ VertexOut VS(VertexIn vin)
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+
+    float4 diffuseAlbedo = float4(0.4f, 0.6f, 0.8f, 1.0f);;
 	#ifdef ALPHA_TEST
         clip(diffuseAlbedo.a-0.1f);
     #endif

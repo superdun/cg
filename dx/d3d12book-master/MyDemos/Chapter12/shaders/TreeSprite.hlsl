@@ -117,51 +117,111 @@ VertexOut VS(VertexIn vin)
 
     return vout;
 }
-
-
- // We expand each point into a quad (4 vertices), so the maximum number of vertices
- // we output per geometry shader invocation is 4.
-[maxvertexcount(9)]
-void GS(line  VertexOut gin[2],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
+float3 ProjectToSphere(float3 pos, float3 center, float radius)
+{
+    float3 dir = pos - center;
+    dir = normalize(dir);
+    return center + dir * radius;
+}
+void OutputVertex(float3 pos, uint primID, inout TriangleStream<GeoOut> triStream)
 {
     GeoOut gout;
-    // 线段端点位置
-    float3 p0 = gin[0].PosW;
-    float3 p1 = gin[1].PosW;
-    // 线段方向
-    float3 dir = normalize(p1 - p0);
-    float d = distance(p1, p0)/2;
-    // 假设up方向是Y方向
-    float3 up = float3(0, 1, 0);
-    // 计算垂直于线段方向的法线
-    float3 normalDir = normalize(cross(dir, up));
-    // 按钮大小相乘得到偏移距离，这里用平均大小的x分量为垂直方向偏移距离
-    float size =2;
-    // 构造三角形三个顶点的位置
-    float3 v0 = p0;
-    float3 v1 = p1;
-    float3 v2 = (p0 + p1) * 0.5 + up * size;
-    float3 v3 = v2+d * dir;
-    float3 v4 = v2 -d * dir;
+    float3 center = float3(0,0,0);
+    gout.PosW = pos;
+    gout.NormalW = normalize(pos - center);
+    gout.PrimID = primID;
+    gout.PosH = mul(float4(pos, 1.0f), gViewProj);
+    gout.TexC = float2(0, 0); // or compute UV coords properly if needed
+    triStream.Append(gout);
+}
+void SubdivideTriangleToSphere(
+    float3 p0,
+    float3 p1,
+    float3 p2,
+    uint primID,
+    inout TriangleStream<GeoOut> triStream,
+    int depth,
+    int endDepth
+    )
+{
+    float3 center = float3(0,0,0);
+    float radius = 8.0f;
+    float3 v0 = ProjectToSphere(p0, center, radius);
+    float3 v1 = ProjectToSphere(p1, center, radius);
+    float3 v2 = ProjectToSphere(p2, center, radius);
+    float3 m0 = ProjectToSphere((v0 + v1) * 0.5f, center, radius);
+    float3 m1 = ProjectToSphere((v1 + v2) * 0.5f, center, radius);
+    float3 m2 = ProjectToSphere((v2 + v0) * 0.5f, center, radius);
+    if(depth==endDepth)
+    {
+        OutputVertex(v0, primID, triStream);
+        OutputVertex(m0, primID, triStream);
+        OutputVertex(m2, primID, triStream);
+        triStream.RestartStrip();
+        OutputVertex(m0, primID, triStream);
+        OutputVertex(v1, primID, triStream);
+        OutputVertex(m1, primID, triStream);
+        triStream.RestartStrip();
+        OutputVertex(m2, primID, triStream);
+        OutputVertex(m1, primID, triStream);
+        OutputVertex(v2, primID, triStream);
+        triStream.RestartStrip();
+        OutputVertex(m0, primID, triStream);
+        OutputVertex(m1, primID, triStream);
+        OutputVertex(m2, primID, triStream);
+        triStream.RestartStrip();
+        return;
+    }
+    else{
+                // 还未达到细分深度，继续递归
+        SubdivideTriangleToSphere(v0, m0, m2, primID, triStream, depth + 1, endDepth);
+        SubdivideTriangleToSphere(m0, v1, m1, primID, triStream, depth + 1, endDepth);
+        SubdivideTriangleToSphere(m2, m1, v2, primID, triStream, depth + 1, endDepth);
+        SubdivideTriangleToSphere(m0, m1, m2, primID, triStream, depth + 1, endDepth);
+    }
 
-    // 计算对应的法线，假设法线都为垂直方向，或者用某策略赋值
-    float3 normal = normalize(cross(v1 - v0, v2 - v0));
 
-    // 输出第一个三角形
-    gout.PosW = v0; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v0,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
-    gout.PosW = v1; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v1,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
-    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
-    triStream.RestartStrip();   // 结束第一个三角形
+}
+ // We expand each point into a quad (4 vertices), so the maximum number of vertices
+ // we output per geometry shader invocation is 4.
+[maxvertexcount(12)]
+void GS(triangle  VertexOut gin[3],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
+{
 
-    gout.PosW = v0; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v0,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
-    gout.PosW = v4; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v4,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
-    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
-    triStream.RestartStrip();   // 结束第二个三角形
-
-    gout.PosW = v1; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v1,1), gViewProj); gout.TexC = float2(0,0); triStream.Append(gout);
-    gout.PosW = v3; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v3,1), gViewProj); gout.TexC = float2(1,0); triStream.Append(gout);
-    gout.PosW = v2; gout.NormalW = normal; gout.PrimID = primID; gout.PosH = mul(float4(v2,1), gViewProj); gout.TexC = float2(0.5,1); triStream.Append(gout);
-    triStream.RestartStrip();   // 结束第3个三角形
+    float3 center = float3(0, 0, 0);
+    float distToCenter = length(gEyePosW - center);
+    float subdivisionDistance1 = 25.0f; // 最近，最大细分
+    float subdivisionDistance2 = 40.0f;
+    float subdivisionDistance3 = 55.0f;
+    int subdivLevel = 0;
+    if (distToCenter < subdivisionDistance1)
+        subdivLevel = 3; // 最深细分，比如 3 次递归
+    else if (distToCenter < subdivisionDistance2)
+        subdivLevel = 2; // 中等细分
+    else if (distToCenter < subdivisionDistance3)
+        subdivLevel = 1; // 低细分
+    else
+        subdivLevel = 0; // 不细分
+    if (subdivLevel > 0)
+    {
+        SubdivideTriangleToSphere(gin[0].PosW, gin[1].PosW, gin[2].PosW, primID, triStream, 0, subdivLevel);
+    }
+    else
+    {
+        // 视距较远，直接输出原始三角形（不细分）
+        GeoOut gout;
+        [unroll]
+        for (int i = 0; i < 3; ++i)
+        {
+            gout.PosW = gin[i].PosW;
+            gout.NormalW = gin[i].NormalW;
+            gout.PrimID = primID;
+            gout.PosH = gin[i].PosH;
+            gout.TexC = gin[i].TexC;
+            triStream.Append(gout);
+        }
+        triStream.RestartStrip();
+    }
 }
 
 float4 PS(GeoOut pin) : SV_Target
