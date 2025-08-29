@@ -119,11 +119,11 @@ private:
 
     XMFLOAT4X4 mView = MathHelper::Identity4x4();
     XMFLOAT4X4 mProj = MathHelper::Identity4x4();
-    XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
+    XMFLOAT3 mEyePos = { 13.0f,-13.0f, 10.0f };
 
     float mTheta = 1.5f * XM_PI;
     float mPhi = 0.2f * XM_PI;
-    float mRadius = 15.0f;
+    float mRadius = 35.0f;
 
     POINT mLastMousePos;
 };
@@ -1070,7 +1070,7 @@ void ShapesApp::BuildPSOs()
         mShaders["opaquePS"]->GetBufferSize()
     }; 
     auto rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    rasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME; // <-- 改这里为线框
+    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID; // <-- 改这里为线框
     opaquePsoDesc.RasterizerState = rasterizerDesc;
     opaquePsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);

@@ -137,111 +137,29 @@ void OutputVertex(float3 pos, uint primID, inout TriangleStream<GeoOut> triStrea
 [maxvertexcount(48)]
 void GS(triangle  VertexOut gin[3],uint primID : SV_PrimitiveID, inout TriangleStream<GeoOut> triStream)
 {
-    float3 center = float3(0, 0, 0);
-    float radius = 8.0f; // This was hardcoded in SubdivideTriangleToSphere, so keeping it here.
-    float distToCenter = length(gEyePosW - center);
-    float subdivisionDistance1 = 25.0f; // 最近，最大细分
-    float subdivisionDistance2 = 50.0f;
-    float subdivisionDistance3 = 90.0f;
-    int subdivLevel = 0;
-    if (distToCenter < subdivisionDistance1)
-        subdivLevel = 3; // 最深细分，比如 3 次递归
-    else if (distToCenter < subdivisionDistance2)
-        subdivLevel = 2; // 中等细分
-    else if (distToCenter < subdivisionDistance3)
-        subdivLevel = 1; // 低细分
-    else
-        subdivLevel = 0; // 不细分
-    // Get initial vertices
-    float3 v0_orig = ProjectToSphere(gin[0].PosW, center, radius);
-    float3 v1_orig = ProjectToSphere(gin[1].PosW, center, radius);
-    float3 v2_orig = ProjectToSphere(gin[2].PosW, center, radius);
-    // Array to store triangles for current level of subdivision
-    // A single level of subdivision produces 4 triangles from 1.
-    // Max level 3 means 4^3 = 64 triangles.
-    // Max number of vertices = 64 * 3 = 192.
-    // This array will hold the vertices of the triangles to be processed in the current "level" of iteration.
-    // Since we can't dynamically size arrays, we'll need to define a large enough array for the max level.
-    // A simpler approach for limited levels is manual unrolling as below.
-    if (subdivLevel == 0)
+
+     // 计算三角形边矢量
+    float3 edge0 = gin[1].PosW - gin[0].PosW;
+    float3 edge1 = gin[2].PosW - gin[0].PosW;
+    // 三角形面法线（未归一化）
+    float3 faceNormal = normalize(cross(edge0, edge1));
+    float t = max(fmod (gTotalTime,10)-3.0f,0.0f) ;
+    float displacementAmount = (-pow(2,-1*t)+1)*6; 
+    GeoOut gout;
+    [unroll]
+    for (int i = 0; i < 3; ++i)
     {
-        // No subdivision, output original triangle
-        GeoOut gout;
-        [unroll]
-        for (int i = 0; i < 3; ++i)
-        {
-            gout.PosW = gin[i].PosW;
-            gout.NormalW = gin[i].NormalW;
-            gout.PrimID = primID;
-            gout.PosH = gin[i].PosH;
-            gout.TexC = gin[i].TexC;
-            triStream.Append(gout);
-        }
-        triStream.RestartStrip();
+        float3 pos = gin[i].PosW;
+        // 沿面法线方向平移顶点
+        float3 displacedPos = pos + displacementAmount * faceNormal;
+        gout.PosW = displacedPos;
+        gout.NormalW = gin[i].NormalW;
+        gout.PrimID = primID;
+        gout.PosH = mul(float4(displacedPos, 1.0f), gViewProj);
+        gout.TexC = gin[i].TexC;
+        triStream.Append(gout);
     }
-    else if (subdivLevel == 1)
-    {
-        // Subdivide once (from 1 triangle to 4)
-        float3 m0 = ProjectToSphere((v0_orig + v1_orig) * 0.5f, center, radius);
-        float3 m1 = ProjectToSphere((v1_orig + v2_orig) * 0.5f, center, radius);
-        float3 m2 = ProjectToSphere((v2_orig + v0_orig) * 0.5f, center, radius);
-        // 4 new triangles
-        OutputVertex(v0_orig, primID, triStream); OutputVertex(m0, primID, triStream); OutputVertex(m2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(m0, primID, triStream); OutputVertex(v1_orig, primID, triStream); OutputVertex(m1, primID, triStream); triStream.RestartStrip();
-        OutputVertex(m2, primID, triStream); OutputVertex(m1, primID, triStream); OutputVertex(v2_orig, primID, triStream); triStream.RestartStrip();
-        OutputVertex(m0, primID, triStream); OutputVertex(m1, primID, triStream); OutputVertex(m2, primID, triStream); triStream.RestartStrip();
-    }
-    else if (subdivLevel == 2)
-    {
-        // Subdivide twice (from 1 triangle to 16)
-        // Level 1 triangles
-        float3 l1_t0_v0=v0_orig, l1_t0_v1, l1_t0_v2;
-        float3 l1_t1_v0, l1_t1_v1=v1_orig, l1_t1_v2;
-        float3 l1_t2_v0, l1_t2_v1, l1_t2_v2=v2_orig;
-        float3 l1_t3_v0, l1_t3_v1, l1_t3_v2;
-        float3 m0_l1 = ProjectToSphere((v0_orig + v1_orig) * 0.5f, center, radius);
-        float3 m1_l1 = ProjectToSphere((v1_orig + v2_orig) * 0.5f, center, radius);
-        float3 m2_l1 = ProjectToSphere((v2_orig + v0_orig) * 0.5f, center, radius);
-        l1_t0_v1 = m0_l1; l1_t0_v2 = m2_l1; // T0: (v0, m0, m2)
-        l1_t1_v0 = m0_l1; l1_t1_v2 = m1_l1; // T1: (m0, v1, m1)
-        l1_t2_v0 = m2_l1; l1_t2_v1 = m1_l1; // T2: (m2, m1, v2)
-        l1_t3_v0 = m0_l1; l1_t3_v1 = m1_l1; l1_t3_v2 = m2_l1; // T3: (m0, m1, m2)
-        // Subdivide each of the 4 triangles from Level 1
-        // Using a helper macro or inline function for this would make it cleaner, but GS limitations...
-        // We'll have to repeat the subdivision logic 4 times.
-        // --- Subdivide T0 (v0_orig, m0_l1, m2_l1) ---
-        float3 t0_m0 = ProjectToSphere((l1_t0_v0 + l1_t0_v1) * 0.5f, center, radius);
-        float3 t0_m1 = ProjectToSphere((l1_t0_v1 + l1_t0_v2) * 0.5f, center, radius);
-        float3 t0_m2 = ProjectToSphere((l1_t0_v2 + l1_t0_v0) * 0.5f, center, radius);
-        OutputVertex(l1_t0_v0, primID, triStream); OutputVertex(t0_m0, primID, triStream); OutputVertex(t0_m2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t0_m0, primID, triStream); OutputVertex(l1_t0_v1, primID, triStream); OutputVertex(t0_m1, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t0_m2, primID, triStream); OutputVertex(t0_m1, primID, triStream); OutputVertex(l1_t0_v2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t0_m0, primID, triStream); OutputVertex(t0_m1, primID, triStream); OutputVertex(t0_m2, primID, triStream); triStream.RestartStrip();
-        // --- Subdivide T1 (m0_l1, v1_orig, m1_l1) ---
-        float3 t1_m0 = ProjectToSphere((l1_t1_v0 + l1_t1_v1) * 0.5f, center, radius);
-        float3 t1_m1 = ProjectToSphere((l1_t1_v1 + l1_t1_v2) * 0.5f, center, radius);
-        float3 t1_m2 = ProjectToSphere((l1_t1_v2 + l1_t1_v0) * 0.5f, center, radius);
-        OutputVertex(l1_t1_v0, primID, triStream); OutputVertex(t1_m0, primID, triStream); OutputVertex(t1_m2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t1_m0, primID, triStream); OutputVertex(l1_t1_v1, primID, triStream); OutputVertex(t1_m1, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t1_m2, primID, triStream); OutputVertex(t1_m1, primID, triStream); OutputVertex(l1_t1_v2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t1_m0, primID, triStream); OutputVertex(t1_m1, primID, triStream); OutputVertex(t1_m2, primID, triStream); triStream.RestartStrip();
-        // --- Subdivide T2 (m2_l1, m1_l1, v2_orig) ---
-        float3 t2_m0 = ProjectToSphere((l1_t2_v0 + l1_t2_v1) * 0.5f, center, radius);
-        float3 t2_m1 = ProjectToSphere((l1_t2_v1 + l1_t2_v2) * 0.5f, center, radius);
-        float3 t2_m2 = ProjectToSphere((l1_t2_v2 + l1_t2_v0) * 0.5f, center, radius);
-        OutputVertex(l1_t2_v0, primID, triStream); OutputVertex(t2_m0, primID, triStream); OutputVertex(t2_m2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t2_m0, primID, triStream); OutputVertex(l1_t2_v1, primID, triStream); OutputVertex(t2_m1, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t2_m2, primID, triStream); OutputVertex(t2_m1, primID, triStream); OutputVertex(l1_t2_v2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t2_m0, primID, triStream); OutputVertex(t2_m1, primID, triStream); OutputVertex(t2_m2, primID, triStream); triStream.RestartStrip();
-        // --- Subdivide T3 (m0_l1, m1_l1, m2_l1) ---
-        float3 t3_m0 = ProjectToSphere((l1_t3_v0 + l1_t3_v1) * 0.5f, center, radius);
-        float3 t3_m1 = ProjectToSphere((l1_t3_v1 + l1_t3_v2) * 0.5f, center, radius);
-        float3 t3_m2 = ProjectToSphere((l1_t3_v2 + l1_t3_v0) * 0.5f, center, radius);
-        OutputVertex(l1_t3_v0, primID, triStream); OutputVertex(t3_m0, primID, triStream); OutputVertex(t3_m2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t3_m0, primID, triStream); OutputVertex(l1_t3_v1, primID, triStream); OutputVertex(t3_m1, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t3_m2, primID, triStream); OutputVertex(t3_m1, primID, triStream); OutputVertex(l1_t3_v2, primID, triStream); triStream.RestartStrip();
-        OutputVertex(t3_m0, primID, triStream); OutputVertex(t3_m1, primID, triStream); OutputVertex(t3_m2, primID, triStream); triStream.RestartStrip();
-    }
+    triStream.RestartStrip();
 
 }
 
